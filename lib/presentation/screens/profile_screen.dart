@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -75,9 +76,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2ECC71),
+        backgroundColor: AppColors.primary,
         title: const Text(
           'Profile',
           style: TextStyle(
@@ -93,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2ECC71)),
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
             )
           : SingleChildScrollView(
@@ -127,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 60,
                                 height: 60,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2ECC71),
+                                  color: AppColors.primary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(
@@ -152,7 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF333333),
+                                        color: AppColors.textPrimary,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -162,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           const Icon(
                                             Icons.email_outlined,
                                             size: 14,
-                                            color: Color(0xFF666666),
+                                            color: AppColors.textSecondary,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
@@ -195,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF666666),
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               TextButton.icon(
@@ -211,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   'Edit',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Color(0xFF2ECC71),
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -241,7 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 'Ingredients',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Color(0xFF666666),
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -337,7 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             label,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF666666),
+              color: AppColors.textSecondary,
             ),
           ),
         ),
@@ -347,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF333333),
+              color: AppColors.textPrimary,
             ),
           ),
         ),
@@ -359,10 +360,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF2ECC71).withOpacity(0.1),
+        color: AppColors.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF2ECC71).withOpacity(0.3),
+          color: AppColors.primary.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -425,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -441,7 +442,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const Icon(
               Icons.chevron_right,
-              color: Color(0xFF999999),
+              color: AppColors.textHint,
               size: 20,
             ),
           ],

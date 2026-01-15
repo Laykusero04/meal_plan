@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
 
 class DishesScreen extends StatelessWidget {
   const DishesScreen({super.key});
@@ -6,9 +7,9 @@ class DishesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2ECC71),
+        backgroundColor: AppColors.primary,
         title: const Text(
           'Dishes',
           style: TextStyle(

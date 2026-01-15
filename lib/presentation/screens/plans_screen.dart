@@ -1,14 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
 
-class PlansScreen extends StatelessWidget {
+class PlansScreen extends StatefulWidget {
   const PlansScreen({super.key});
+
+  @override
+  State<PlansScreen> createState() => _PlansScreenState();
+}
+
+class _PlansScreenState extends State<PlansScreen> {
+  DateTime _selectedDay = DateTime(2026, 1, 12);
+  String _selectedView = '7 Days';
+
+  final List<String> _viewOptions = ['7 Days', 'Month'];
+
+  int _getDaysForView(String view) {
+    switch (view) {
+      case '7 Days':
+        return 7;
+      case 'Month':
+        return 30;
+      default:
+        return 7;
+    }
+  }
+
+  // Meal plan data structure
+  Map<String, Map<String, String>> _mealPlans = {
+    '2026-01-12': {
+      'breakfast': 'Scrambled Eggs & Toast',
+      'lunch': 'Grilled Chicken Salad',
+      'dinner': 'Vegetable Pasta',
+    },
+    '2026-01-13': {
+      'breakfast': 'Oatmeal with Fruits',
+      'lunch': 'Beef Stir Fry',
+      'dinner': 'Grilled Fish',
+    },
+    '2026-01-14': {
+      'breakfast': 'Pancakes with Syrup',
+      'lunch': 'Chicken Wrap',
+      'dinner': 'Roasted Pork',
+    },
+    '2026-01-15': {
+      'breakfast': 'Yogurt with Granola',
+      'lunch': 'Fish Tacos',
+      'dinner': 'Beef Steak',
+    },
+    '2026-01-16': {
+      'breakfast': 'French Toast',
+      'lunch': 'Caesar Salad',
+      'dinner': 'Grilled Salmon',
+    },
+    '2026-01-17': {
+      'breakfast': 'Smoothie Bowl',
+      'lunch': 'Chicken Sandwich',
+      'dinner': 'Vegetable Curry',
+    },
+    '2026-01-18': {
+      'breakfast': 'Avocado Toast',
+      'lunch': 'Beef Burger',
+      'dinner': 'Chicken Teriyaki',
+    },
+  };
+
+  String _getDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Map<String, String>? _getMealPlanForDate(DateTime date) {
+    return _mealPlans[_getDateKey(date)];
+  }
+
+  bool _hasPlanForDate(DateTime date) {
+    return _getMealPlanForDate(date) != null;
+  }
+
+  DateTime _getStartOfWeek(DateTime date) {
+    final weekday = date.weekday;
+    return date.subtract(Duration(days: weekday - 1));
+  }
+
+  List<DateTime> _getWeekDays(DateTime date) {
+    final startOfWeek = _getStartOfWeek(date);
+    return List.generate(7, (index) => startOfWeek.add(Duration(days: index)));
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F0),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2ECC71),
+        backgroundColor: AppColors.primary,
         title: const Text(
           'Plans',
           style: TextStyle(
@@ -21,30 +106,659 @@ class PlansScreen extends StatelessWidget {
         elevation: 0,
         toolbarHeight: 56,
       ),
-      body: Center(
+      body: Column(
+        children: [
+          // Calendar Section - Redesigned
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: Column(
+              children: [
+                // Month and Year Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _getHeaderText(),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, size: 20),
+                            color: AppColors.primary,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              final days = _getDaysForView(_selectedView);
+                              setState(() {
+                                _selectedDay = _selectedDay.subtract(Duration(days: days));
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, size: 20),
+                            color: AppColors.primary,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              final days = _getDaysForView(_selectedView);
+                              setState(() {
+                                _selectedDay = _selectedDay.add(Duration(days: days));
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Weekday Headers
+                const SizedBox(height: 8),
+                Row(
+                  children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                      .map((day) => Expanded(
+                            child: Center(
+                              child: Text(
+                                day,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 12),
+                // Calendar View based on selected filter
+                _buildCalendarView(),
+              ],
+            ),
+          ),
+          // View Filter Buttons
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.white,
+            child: Row(
+              children: _viewOptions.map((view) {
+                final isSelected = _selectedView == view;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: view != _viewOptions.last ? 8 : 0,
+                    ),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedView = view;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.grey200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          view,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? AppColors.onPrimary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 1),
+          // Content Area - Scrollable
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              color: AppColors.surface,
+              child: SingleChildScrollView(
+                child: _hasPlanForDate(_selectedDay)
+                    ? _buildPlanContent()
+                    : _buildEmptyState(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: MediaQuery.of(context).size.height - 400,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.calendar_today,
-              size: 80,
-              color: Colors.grey[400],
+              Icons.calendar_today_outlined,
+              size: 64,
+              color: AppColors.grey300,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Meal Plans',
+            const SizedBox(height: 20),
+            const Text(
+              'No plan for this date',
               style: TextStyle(
-                fontSize: 24,
-                color: Colors.grey[600],
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Your meal plans will appear here',
+              'Create a new meal plan starting from ${_getFormattedDate(_selectedDay)}',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                // TODO: Navigate to create plan screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Create plan functionality coming soon!'),
+                    backgroundColor: AppColors.primary,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                '+ Create Plan',
+                style: TextStyle(
+                  color: AppColors.surface,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlanContent() {
+    final mealPlan = _getMealPlanForDate(_selectedDay);
+    if (mealPlan == null) {
+      return _buildEmptyState();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.restaurant_menu,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getFormattedDate(_selectedDay),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Your meal plan for today',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    // TODO: Navigate to edit plan screen
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Edit plan functionality coming soon!'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Breakfast Card
+          _buildMealCard(
+            mealType: 'Breakfast',
+            mealName: mealPlan['breakfast'] ?? 'Not planned',
+            icon: Icons.breakfast_dining,
+            color: const Color(0xFFFFF3E0),
+            iconColor: const Color(0xFFFF9800),
+          ),
+          const SizedBox(height: 8),
+          // Lunch Card
+          _buildMealCard(
+            mealType: 'Lunch',
+            mealName: mealPlan['lunch'] ?? 'Not planned',
+            icon: Icons.lunch_dining,
+            color: const Color(0xFFE8F5E9),
+            iconColor: const Color(0xFF4CAF50),
+          ),
+          const SizedBox(height: 8),
+          // Dinner Card
+          _buildMealCard(
+            mealType: 'Dinner',
+            mealName: mealPlan['dinner'] ?? 'Not planned',
+            icon: Icons.dinner_dining,
+            color: const Color(0xFFE3F2FD),
+            iconColor: const Color(0xFF2196F3),
+          ),
+          const SizedBox(height: 16),
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // TODO: Add meal functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Add meal functionality coming soon!'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Meal', style: TextStyle(fontSize: 13)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Share plan functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Share plan functionality coming soon!'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.share, size: 16),
+                  label: const Text('Share', style: TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealCard({
+    required String mealType,
+    required String mealName,
+    required IconData icon,
+    required Color color,
+    required Color iconColor,
+  }) {
+    final isNotPlanned = mealName == 'Not planned';
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.border,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  mealType,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  mealName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isNotPlanned
+                        ? AppColors.textDisabled
+                        : AppColors.textPrimary,
+                    fontStyle: isNotPlanned ? FontStyle.italic : FontStyle.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              isNotPlanned ? Icons.add_circle_outline : Icons.edit_outlined,
+              color: AppColors.primary,
+              size: 18,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              // TODO: Add/Edit meal functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isNotPlanned
+                        ? 'Add $mealType functionality coming soon!'
+                        : 'Edit $mealType functionality coming soon!',
+                  ),
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getFormattedDate(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.day}';
+  }
+
+  String _getMonthYear(DateTime date) {
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return '${months[date.month - 1]} ${date.year}';
+  }
+
+  String _getWeekRange(DateTime date) {
+    final startOfWeek = _getStartOfWeek(date);
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    
+    if (startOfWeek.month == endOfWeek.month) {
+      return '${months[startOfWeek.month - 1]} ${startOfWeek.day} - ${endOfWeek.day}, ${startOfWeek.year}';
+    } else {
+      return '${months[startOfWeek.month - 1]} ${startOfWeek.day} - ${months[endOfWeek.month - 1]} ${endOfWeek.day}, ${startOfWeek.year}';
+    }
+  }
+
+  String _getHeaderText() {
+    switch (_selectedView) {
+      case '7 Days':
+        return _getWeekRange(_selectedDay);
+      case 'Month':
+        return _getMonthYear(_selectedDay);
+      default:
+        return _getWeekRange(_selectedDay);
+    }
+  }
+
+  Widget _buildCalendarView() {
+    switch (_selectedView) {
+      case '7 Days':
+        return _buildWeekView();
+      case 'Month':
+        return _buildCalendarGrid();
+      default:
+        return _buildWeekView();
+    }
+  }
+
+  Widget _buildWeekView() {
+    final weekDays = _getWeekDays(_selectedDay);
+    
+    return Row(
+      children: weekDays.map((date) {
+        return Expanded(
+          child: _buildCalendarDay(date, date.month),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCalendarGrid() {
+    final firstDayOfMonth = DateTime(_selectedDay.year, _selectedDay.month, 1);
+    final lastDayOfMonth = DateTime(_selectedDay.year, _selectedDay.month + 1, 0);
+    final firstDayWeekday = firstDayOfMonth.weekday;
+    final daysInMonth = lastDayOfMonth.day;
+    
+    // Calculate days to show (including previous month's trailing days)
+    final daysToShow = <DateTime>[];
+    
+    // Add previous month's trailing days
+    final prevMonthLastDay = DateTime(_selectedDay.year, _selectedDay.month, 0);
+    final daysInPrevMonth = prevMonthLastDay.day;
+    for (int i = firstDayWeekday - 1; i > 0; i--) {
+      daysToShow.add(DateTime(_selectedDay.year, _selectedDay.month - 1, daysInPrevMonth - i + 1));
+    }
+    
+    // Add current month's days
+    for (int i = 1; i <= daysInMonth; i++) {
+      daysToShow.add(DateTime(_selectedDay.year, _selectedDay.month, i));
+    }
+    
+    // Add next month's leading days to fill the grid
+    final remainingDays = 42 - daysToShow.length; // 6 rows * 7 days
+    for (int i = 1; i <= remainingDays; i++) {
+      daysToShow.add(DateTime(_selectedDay.year, _selectedDay.month + 1, i));
+    }
+
+    return Column(
+      children: [
+        for (int week = 0; week < 6; week++)
+          Row(
+            children: [
+              for (int day = 0; day < 7; day++)
+                Expanded(
+                  child: _buildCalendarDay(
+                    daysToShow[week * 7 + day],
+                    _selectedDay.month,
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCalendarDay(DateTime date, int currentMonth) {
+    final isCurrentMonth = date.month == currentMonth;
+    final isSelected = _selectedDay.year == date.year &&
+        _selectedDay.month == date.month &&
+        _selectedDay.day == date.day;
+    final isToday = date.year == DateTime.now().year &&
+        date.month == DateTime.now().month &&
+        date.day == DateTime.now().day;
+    final hasPlan = _hasPlanForDate(date);
+
+    return GestureDetector(
+      onTap: () {
+        // Allow selecting any day in the visible range
+        setState(() {
+          _selectedDay = date;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary
+              : (isToday && !isSelected
+                  ? AppColors.primary.withOpacity(0.1)
+                  : Colors.transparent),
+          borderRadius: BorderRadius.circular(8),
+          border: isToday && !isSelected
+              ? Border.all(color: AppColors.primary, width: 1.5)
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected || isToday
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+                color: isSelected
+                    ? AppColors.onPrimary
+                    : (isCurrentMonth
+                        ? AppColors.textPrimary
+                        : AppColors.textDisabled),
+              ),
+            ),
+            if (hasPlan && isCurrentMonth)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.onPrimary
+                      : AppColors.primary,
+                  shape: BoxShape.circle,
               ),
             ),
           ],
@@ -53,4 +767,3 @@ class PlansScreen extends StatelessWidget {
     );
   }
 }
-

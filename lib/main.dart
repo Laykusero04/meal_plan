@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/core/theme/app_theme.dart';
 import 'package:meal_plan/firebase_options.dart';
 import 'package:meal_plan/presentation/screens/login_screen.dart';
 import 'package:meal_plan/presentation/screens/main_navigation_screen.dart';
@@ -19,10 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MealPlan',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2ECC71)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
@@ -40,8 +39,8 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2ECC71)),
+              child: const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
             ),
           );

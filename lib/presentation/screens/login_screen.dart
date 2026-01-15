@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F0),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -51,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? "Don't have an account? Sign up above!"
                       : "Already have an account? Just sign in above!",
                   style: const TextStyle(
-                    color: Color(0xFF999999),
+                    color: AppColors.textHint,
                     fontSize: 12,
                   ),
                   textAlign: TextAlign.center,
@@ -72,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: const Color(0xFF2ECC71),
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(
@@ -88,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -97,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'Plan meals without stress',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF666666),
+            color: AppColors.textSecondary,
           ),
         ),
       ],
@@ -133,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 24),
@@ -149,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(
               child: Container(
                 height: 1,
-                color: const Color(0xFFE0E0E0),
+                color: AppColors.border,
               ),
             ),
             Padding(
@@ -165,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(
               child: Container(
                 height: 1,
-                color: const Color(0xFFE0E0E0),
+                color: AppColors.border,
               ),
             ),
           ],
@@ -177,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF333333),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -199,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF2ECC71), width: 2),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
@@ -215,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF333333),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
@@ -236,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF2ECC71), width: 2),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
@@ -252,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF333333),
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -274,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF2ECC71), width: 2),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
@@ -290,7 +291,7 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF333333),
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 6),
@@ -312,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF2ECC71), width: 2),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
@@ -330,8 +331,8 @@ class _LoginScreenState extends State<LoginScreen> {
             height: 44,
             decoration: BoxDecoration(
               color: isLoading
-                  ? const Color(0xFF2ECC71).withOpacity(0.6)
-                  : const Color(0xFF2ECC71),
+                  ? AppColors.primary.withOpacity(0.6)
+                  : AppColors.primary,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -366,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: const Color(0xFF2ECC71),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -436,7 +437,7 @@ class _LoginScreenState extends State<LoginScreen> {
       height: 44,
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -459,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF333333),
+              color: AppColors.textPrimary,
             ),
           ),
         ],
@@ -481,7 +482,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextSpan(
             text: 'Terms of Service',
             style: const TextStyle(
-              color: Color(0xFF666666),
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
             ),
             recognizer: null, // Add GestureRecognizer for navigation
@@ -490,7 +491,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextSpan(
             text: 'Privacy Policy',
             style: const TextStyle(
-              color: Color(0xFF666666),
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
             ),
             recognizer: null, // Add GestureRecognizer for navigation

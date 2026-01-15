@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/presentation/screens/home_screen.dart';
 import 'package:meal_plan/presentation/screens/plans_screen.dart';
 import 'package:meal_plan/presentation/screens/dishes_screen.dart';
@@ -47,7 +48,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF2ECC71),
+          selectedItemColor: AppColors.primary,
           unselectedItemColor: Colors.grey[600],
           selectedFontSize: 12,
           unselectedFontSize: 12,

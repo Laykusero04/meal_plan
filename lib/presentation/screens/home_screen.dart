@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/presentation/screens/meal_decider_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -67,9 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     if (_isLoadingUser) {
       return Scaffold(
-        backgroundColor: const Color(0xFFE8F8F0),
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: const Color(0xFF2ECC71),
+          backgroundColor: AppColors.primary,
           title: const Text(
             'MealPlan',
             style: TextStyle(
@@ -81,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2ECC71)),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ),
       );
@@ -208,7 +210,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _buildActionButton(
                       icon: Icons.casino,
                       label: 'Spin Meal',
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MealDeciderScreen(),
+                          ),
+                        );
+                      },
                       isPrimary: true,
                     ),
                   ),
@@ -320,12 +329,12 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFF2ECC71).withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: const Color(0xFF2ECC71),
+              color: AppColors.primary,
               size: 20,
             ),
           ),
@@ -382,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: isPrimary ? const Color(0xFF2ECC71) : Colors.white,
+          color: isPrimary ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: isPrimary
               ? null
@@ -393,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
           boxShadow: isPrimary
               ? [
                   BoxShadow(
-                    color: const Color(0xFF2ECC71).withOpacity(0.3),
+                    color: AppColors.primary.withOpacity(0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
