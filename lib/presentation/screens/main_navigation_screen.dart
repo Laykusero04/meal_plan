@@ -3,6 +3,7 @@ import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/presentation/screens/home_screen.dart';
 import 'package:meal_plan/presentation/screens/plans_screen.dart';
 import 'package:meal_plan/presentation/screens/dishes_screen.dart';
+import 'package:meal_plan/presentation/screens/grocery_list_screen.dart';
 import 'package:meal_plan/presentation/screens/profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const HomeScreen(),
     const PlansScreen(),
     const DishesScreen(),
+    const GroceryListScreen(),
     const ProfileScreen(),
   ];
 
@@ -67,6 +69,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               icon: Icon(Icons.restaurant_menu_outlined),
               activeIcon: Icon(Icons.restaurant_menu),
               label: 'Dishes',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart_outlined),
+              activeIcon: Icon(Icons.shopping_cart),
+              label: 'Grocery',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

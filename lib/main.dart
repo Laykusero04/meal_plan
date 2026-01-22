@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/core/theme/app_theme.dart';
+import 'package:meal_plan/data/providers/providers.dart';
 import 'package:meal_plan/firebase_options.dart';
 import 'package:meal_plan/presentation/screens/login_screen.dart';
 import 'package:meal_plan/presentation/screens/main_navigation_screen.dart';
@@ -10,7 +12,16 @@ import 'package:meal_plan/presentation/screens/main_navigation_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => DishProvider()),
+        ChangeNotifierProvider(create: (_) => MealPlanProvider()),
+        ChangeNotifierProvider(create: (_) => GroceryProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

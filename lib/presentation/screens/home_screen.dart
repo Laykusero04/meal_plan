@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/presentation/screens/meal_decider_screen.dart';
+import 'package:meal_plan/presentation/screens/dish_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -69,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     if (_isLoadingUser) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: AppColors.primary,
           title: const Text(
@@ -90,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F8F0),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         backgroundColor: const Color(0xFF2ECC71),
         title: const Text(
@@ -310,7 +311,23 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData icon,
     bool isNotPlanned = false,
   }) {
-    return Container(
+    return GestureDetector(
+      onTap: isNotPlanned
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DishDetailsScreen(
+                    name: mealName,
+                    category: mealType,
+                    ingredients: 'Various ingredients',
+                    tags: const [],
+                  ),
+                ),
+              );
+            },
+      child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -376,6 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
             constraints: const BoxConstraints(),
           ),
         ],
+      ),
       ),
     );
   }

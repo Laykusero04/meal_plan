@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/presentation/widgets/select_dish_dialog.dart';
+import 'package:meal_plan/presentation/screens/dish_details_screen.dart';
 
 class PlansScreen extends StatefulWidget {
   const PlansScreen({super.key});
@@ -9,14 +11,15 @@ class PlansScreen extends StatefulWidget {
 }
 
 class _PlansScreenState extends State<PlansScreen> {
-  DateTime _selectedDay = DateTime(2026, 1, 12);
-  String _selectedView = '7 Days';
+  DateTime _selectedDay = DateTime.now();
+  String _selectedView = 'Week';
+  bool _isSwipingForward = true;
 
-  final List<String> _viewOptions = ['7 Days', 'Month'];
+  final List<String> _viewOptions = ['Week', 'Month'];
 
   int _getDaysForView(String view) {
     switch (view) {
-      case '7 Days':
+      case 'Week':
         return 7;
       case 'Month':
         return 30;
@@ -84,6 +87,79 @@ class _PlansScreenState extends State<PlansScreen> {
   List<DateTime> _getWeekDays(DateTime date) {
     final startOfWeek = _getStartOfWeek(date);
     return List.generate(7, (index) => startOfWeek.add(Duration(days: index)));
+  }
+
+  void _showMealTypeSelector() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Add meal for',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildMealTypeOption('Breakfast', Icons.breakfast_dining, const Color(0xFFFF9800)),
+            _buildMealTypeOption('Lunch', Icons.lunch_dining, const Color(0xFF4CAF50)),
+            _buildMealTypeOption('Dinner', Icons.dinner_dining, const Color(0xFF2196F3)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMealTypeOption(String mealType, IconData icon, Color color) {
+    return ListTile(
+      onTap: () {
+        Navigator.pop(context);
+        showSelectDishDialog(
+          context: context,
+          mealType: mealType,
+          onDishSelected: (dish) {
+            setState(() {
+              final dateKey = _getDateKey(_selectedDay);
+              _mealPlans[dateKey] ??= {};
+              _mealPlans[dateKey]![mealType.toLowerCase()] = dish.name;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${dish.name} added to $mealType'),
+                backgroundColor: AppColors.primary,
+              ),
+            );
+          },
+        );
+      },
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(
+        mealType,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 15,
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.grey),
+    );
   }
 
 
@@ -229,15 +305,51 @@ class _PlansScreenState extends State<PlansScreen> {
             ),
           ),
           const SizedBox(height: 1),
-          // Content Area - Scrollable
+          // Content Area - Scrollable with swipe navigation
           Expanded(
-            child: Container(
-              width: double.infinity,
-              color: AppColors.surface,
-              child: SingleChildScrollView(
-                child: _hasPlanForDate(_selectedDay)
-                    ? _buildPlanContent()
-                    : _buildEmptyState(),
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity != null) {
+                  if (details.primaryVelocity! < -200) {
+                    // Swipe left - go to next day
+                    setState(() {
+                      _isSwipingForward = true;
+                      _selectedDay = _selectedDay.add(const Duration(days: 1));
+                    });
+                  } else if (details.primaryVelocity! > 200) {
+                    // Swipe right - go to previous day
+                    setState(() {
+                      _isSwipingForward = false;
+                      _selectedDay = _selectedDay.subtract(const Duration(days: 1));
+                    });
+                  }
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                color: AppColors.surface,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) {
+                    final offsetAnimation = Tween<Offset>(
+                      begin: Offset(_isSwipingForward ? 1.0 : -1.0, 0.0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOut,
+                    ));
+                    return SlideTransition(
+                      position: offsetAnimation,
+                      child: child,
+                    );
+                  },
+                  child: SingleChildScrollView(
+                    key: ValueKey<String>(_getDateKey(_selectedDay)),
+                    child: _hasPlanForDate(_selectedDay)
+                        ? _buildPlanContent()
+                        : _buildEmptyState(),
+                  ),
+                ),
               ),
             ),
           ),
@@ -282,13 +394,7 @@ class _PlansScreenState extends State<PlansScreen> {
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                // TODO: Navigate to create plan screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Create plan functionality coming soon!'),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
+                _showMealTypeSelector();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -419,13 +525,7 @@ class _PlansScreenState extends State<PlansScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    // TODO: Add meal functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Add meal functionality coming soon!'),
-                        backgroundColor: AppColors.primary,
-                      ),
-                    );
+                    _showMealTypeSelector();
                   },
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add Meal', style: TextStyle(fontSize: 13)),
@@ -472,8 +572,24 @@ class _PlansScreenState extends State<PlansScreen> {
     required Color iconColor,
   }) {
     final isNotPlanned = mealName == 'Not planned';
-    
-    return Container(
+
+    return GestureDetector(
+      onTap: isNotPlanned
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DishDetailsScreen(
+                    name: mealName,
+                    category: mealType,
+                    ingredients: 'Various ingredients',
+                    tags: const [],
+                  ),
+                ),
+              );
+            },
+      child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -543,20 +659,27 @@ class _PlansScreenState extends State<PlansScreen> {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             onPressed: () {
-              // TODO: Add/Edit meal functionality
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    isNotPlanned
-                        ? 'Add $mealType functionality coming soon!'
-                        : 'Edit $mealType functionality coming soon!',
-                  ),
-                  backgroundColor: AppColors.primary,
-                ),
+              showSelectDishDialog(
+                context: context,
+                mealType: mealType,
+                onDishSelected: (dish) {
+                  setState(() {
+                    final dateKey = _getDateKey(_selectedDay);
+                    _mealPlans[dateKey] ??= {};
+                    _mealPlans[dateKey]![mealType.toLowerCase()] = dish.name;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${dish.name} added to $mealType'),
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
+                },
               );
             },
           ),
         ],
+      ),
       ),
     );
   }
@@ -624,7 +747,7 @@ class _PlansScreenState extends State<PlansScreen> {
 
   String _getHeaderText() {
     switch (_selectedView) {
-      case '7 Days':
+      case 'Week':
         return _getWeekRange(_selectedDay);
       case 'Month':
         return _getMonthYear(_selectedDay);
@@ -635,7 +758,7 @@ class _PlansScreenState extends State<PlansScreen> {
 
   Widget _buildCalendarView() {
     switch (_selectedView) {
-      case '7 Days':
+      case 'Week':
         return _buildWeekView();
       case 'Month':
         return _buildCalendarGrid();
