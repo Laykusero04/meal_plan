@@ -1,6 +1,8 @@
 class Dish {
   final String id;
   final String name;
+  final String description;
+  final String mainIngredient;
   final String ingredients;
   final String category;
   final List<String> tags;
@@ -13,6 +15,8 @@ class Dish {
   Dish({
     required this.id,
     required this.name,
+    this.description = '',
+    this.mainIngredient = '',
     required this.ingredients,
     required this.category,
     this.tags = const [],
@@ -35,6 +39,8 @@ class Dish {
   Dish copyWith({
     String? id,
     String? name,
+    String? description,
+    String? mainIngredient,
     String? ingredients,
     String? category,
     List<String>? tags,
@@ -47,6 +53,8 @@ class Dish {
     return Dish(
       id: id ?? this.id,
       name: name ?? this.name,
+      description: description ?? this.description,
+      mainIngredient: mainIngredient ?? this.mainIngredient,
       ingredients: ingredients ?? this.ingredients,
       category: category ?? this.category,
       tags: tags ?? this.tags,

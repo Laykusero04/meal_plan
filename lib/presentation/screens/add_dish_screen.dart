@@ -14,52 +14,75 @@ class AddDishScreen extends StatefulWidget {
 class _AddDishScreenState extends State<AddDishScreen> {
   final _formKey = GlobalKey<FormState>();
   final _dishNameController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _tagController = TextEditingController();
 
   final Set<String> _selectedCategories = {};
   final Set<String> _selectedIngredients = {};
-  final Set<String> _optionalIngredients = {}; // Ingredients marked as optional
+  final Set<String> _optionalIngredients = {};
   final List<String> _tags = [];
   bool _isPrivate = true;
+  String? _selectedMainIngredient;
+  String _ingredientSearch = '';
+  String _mainIngredientSearch = '';
 
-  final List<String> _categories = [
-    'Breakfast',
-    'Lunch',
-    'Dinner',
-    'Snack',
+  final List<Map<String, dynamic>> _categories = [
+    {'name': 'Breakfast', 'icon': Icons.wb_sunny_outlined},
+    {'name': 'Lunch', 'icon': Icons.light_mode_outlined},
+    {'name': 'Dinner', 'icon': Icons.nightlight_outlined},
+    {'name': 'Snack', 'icon': Icons.cookie_outlined},
   ];
 
   List<String> get _allIngredients {
     final dishProvider = context.read<DishProvider>();
-    final ingredients = <String>{};
-    for (final dish in dishProvider.allDishes) {
-      ingredients.addAll(dish.ingredientsList);
-    }
-    return ingredients.toList()..sort();
+    return dishProvider.ingredients.toList();
   }
 
-  String _ingredientSearch = '';
-
   List<String> _getDisplayedIngredients() {
-    // Filter out already selected ingredients
     final available = _allIngredients
         .where((i) => !_selectedIngredients.contains(i))
         .toList();
 
     if (_ingredientSearch.isEmpty) {
-      // Show top 8 when no search
       return available.take(8).toList();
     } else {
-      // Show filtered results when searching
       return available
           .where((i) => i.toLowerCase().contains(_ingredientSearch.toLowerCase()))
           .toList();
     }
   }
 
+  List<String> _getDisplayedMainIngredients() {
+    if (_mainIngredientSearch.isEmpty) {
+      return _allIngredients.take(8).toList();
+    } else {
+      return _allIngredients
+          .where((i) => i.toLowerCase().contains(_mainIngredientSearch.toLowerCase()))
+          .toList();
+    }
+  }
+
+  int get _completedSteps {
+    int count = 0;
+    if (_dishNameController.text.trim().isNotEmpty) count++;
+    if (_selectedCategories.isNotEmpty) count++;
+    if (_selectedMainIngredient != null) count++;
+    if (_selectedIngredients.isNotEmpty) count++;
+    return count;
+  }
+
+  static const int _totalRequiredSteps = 4;
+
+  @override
+  void initState() {
+    super.initState();
+    _dishNameController.addListener(() => setState(() {}));
+  }
+
   @override
   void dispose() {
     _dishNameController.dispose();
+    _descriptionController.dispose();
     _tagController.dispose();
     super.dispose();
   }
@@ -83,30 +106,26 @@ class _AddDishScreenState extends State<AddDishScreen> {
   void _saveDish() {
     if (_formKey.currentState!.validate()) {
       if (_selectedCategories.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select at least one category'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        _showError('Please select at least one category');
+        return;
+      }
+
+      if (_selectedMainIngredient == null) {
+        _showError('Please select a main ingredient');
         return;
       }
 
       if (_selectedIngredients.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select at least one ingredient'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        _showError('Please select at least one ingredient');
         return;
       }
 
-      // Create the dish
       final dishProvider = context.read<DishProvider>();
       final dish = Dish(
         id: dishProvider.generateId(),
         name: _dishNameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        mainIngredient: _selectedMainIngredient!,
         ingredients: _selectedIngredients.join(', '),
         category: _selectedCategories.join(', '),
         tags: _tags,
@@ -114,28 +133,55 @@ class _AddDishScreenState extends State<AddDishScreen> {
         isPublic: !_isPrivate,
       );
 
-      // Add to provider
       dishProvider.addDish(dish);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_dishNameController.text} saved successfully!'),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text('${_dishNameController.text} saved!'),
+            ],
+          ),
           backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       Navigator.pop(context);
     }
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Flexible(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final progress = _completedSteps / _totalRequiredSteps;
+
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.grey100,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.close, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -146,135 +192,261 @@ class _AddDishScreenState extends State<AddDishScreen> {
             fontSize: 18,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: TextButton(
-              onPressed: _saveDish,
-              style: TextButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(6),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: progress),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+            builder: (context, value, _) {
+              return LinearProgressIndicator(
+                value: value,
+                backgroundColor: AppColors.grey200,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progress == 1.0 ? AppColors.primary : AppColors.secondary,
                 ),
-              ),
-              child: const Text(
-                'Save',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+                minHeight: 3,
+              );
+            },
           ),
-        ],
+        ),
       ),
+      bottomNavigationBar: _buildBottomSaveBar(),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Dish Name
-              _buildSectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Dish Name *',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _dishNameController,
-                      decoration: InputDecoration(
-                        hintText: 'e.g., Chicken Adobo',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: AppColors.primary),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a dish name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
+              // Progress hint
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  _completedSteps == _totalRequiredSteps
+                      ? 'All required fields filled!'
+                      : '$_completedSteps of $_totalRequiredSteps required fields completed',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _completedSteps == _totalRequiredSteps
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
+
+              // Dish Name
+              _buildSection(
+                icon: Icons.restaurant_menu,
+                iconColor: AppColors.primary,
+                accentColor: AppColors.primary,
+                title: 'Dish Name',
+                isRequired: true,
+                isCompleted: _dishNameController.text.trim().isNotEmpty,
+                child: TextFormField(
+                  controller: _dishNameController,
+                  style: const TextStyle(fontSize: 15),
+                  decoration: _inputDecoration(
+                    hint: 'e.g., Chicken Adobo',
+                    prefixIcon: Icons.edit_outlined,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a dish name';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Description
+              _buildSection(
+                icon: Icons.notes,
+                iconColor: AppColors.grey600,
+                accentColor: AppColors.grey400,
+                title: 'Description',
+                subtitle: 'A short summary of your dish',
+                child: TextFormField(
+                  controller: _descriptionController,
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: _inputDecoration(
+                    hint: 'e.g., A creamy Italian pasta with garlic and parmesan',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // Category
-              _buildSectionCard(
+              _buildSection(
+                icon: Icons.category_outlined,
+                iconColor: AppColors.secondary,
+                accentColor: AppColors.secondary,
+                title: 'Category',
+                isRequired: true,
+                isCompleted: _selectedCategories.isNotEmpty,
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _categories.map((cat) {
+                    final name = cat['name'] as String;
+                    final icon = cat['icon'] as IconData;
+                    final isSelected = _selectedCategories.contains(name);
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedCategories.remove(name);
+                          } else {
+                            _selectedCategories.add(name);
+                          }
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.secondary.withValues(alpha: 0.1)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.secondary
+                                : AppColors.border,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 16,
+                              color: isSelected
+                                  ? AppColors.secondary
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isSelected
+                                    ? AppColors.secondary
+                                    : AppColors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Main Ingredient
+              _buildSection(
+                icon: Icons.star_outline,
+                iconColor: AppColors.warning,
+                accentColor: AppColors.warning,
+                title: 'Main Ingredient',
+                isRequired: true,
+                isCompleted: _selectedMainIngredient != null,
+                subtitle: _selectedMainIngredient != null
+                    ? null
+                    : 'Choose the star of this dish',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Category * (${_selectedCategories.length} selected)',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                    // Show selected main ingredient
+                    if (_selectedMainIngredient != null) ...[
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedMainIngredient = null);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppColors.warning, width: 1.5),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star, size: 16, color: AppColors.warning),
+                              const SizedBox(width: 6),
+                              Text(
+                                _selectedMainIngredient!,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.close, size: 14, color: AppColors.warning),
+                            ],
+                          ),
+                        ),
                       ),
+                      const SizedBox(height: 12),
+                    ],
+                    // Search field
+                    TextField(
+                      onChanged: (value) {
+                        setState(() => _mainIngredientSearch = value);
+                      },
+                      decoration: _searchDecoration('Search ingredients...'),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _categories.map((category) {
-                        final isSelected = _selectedCategories.contains(category);
+                      children: _getDisplayedMainIngredients().map((ingredient) {
+                        final isSelected = _selectedMainIngredient == ingredient;
                         return GestureDetector(
                           onTap: () {
                             setState(() {
-                              if (isSelected) {
-                                _selectedCategories.remove(category);
-                              } else {
-                                _selectedCategories.add(category);
-                              }
+                              _selectedMainIngredient = isSelected ? null : ingredient;
                             });
                           },
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
+                              horizontal: 14,
+                              vertical: 8,
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  ? AppColors.warning.withValues(alpha: 0.1)
                                   : Colors.white,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isSelected
-                                    ? AppColors.primary
+                                    ? AppColors.warning
                                     : AppColors.border,
                               ),
                             ),
                             child: Text(
-                              category,
+                              ingredient,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: isSelected
-                                    ? AppColors.primary
+                                    ? AppColors.warning
                                     : AppColors.textPrimary,
                                 fontWeight: isSelected
                                     ? FontWeight.w600
@@ -288,78 +460,45 @@ class _AddDishScreenState extends State<AddDishScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // Ingredients
-              _buildSectionCard(
+              _buildSection(
+                icon: Icons.shopping_basket_outlined,
+                iconColor: AppColors.primaryDark,
+                accentColor: AppColors.primaryDark,
+                title: 'Ingredients',
+                isRequired: true,
+                isCompleted: _selectedIngredients.isNotEmpty,
+                trailing: _optionalIngredients.isNotEmpty
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_optionalIngredients.length} optional',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : null,
+                subtitle: 'Long press selected to mark as optional',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Ingredients * (${_selectedIngredients.length} selected)',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        if (_optionalIngredients.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${_optionalIngredients.length} optional',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.orange,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Long press to mark as optional',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[500],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Search field
                     TextField(
                       onChanged: (value) {
-                        setState(() {
-                          _ingredientSearch = value;
-                        });
+                        setState(() => _ingredientSearch = value);
                       },
-                      decoration: InputDecoration(
-                        hintText: 'Search ingredients...',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
-                        filled: true,
-                        fillColor: AppColors.grey100,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                      ),
+                      decoration: _searchDecoration('Search ingredients...'),
                     ),
-                    const SizedBox(height: 12),
-                    // Selected ingredients (always show)
+                    const SizedBox(height: 10),
+                    // Selected ingredients
                     if (_selectedIngredients.isNotEmpty) ...[
                       Wrap(
                         spacing: 8,
@@ -390,22 +529,27 @@ class _AddDishScreenState extends State<AddDishScreen> {
                                   ),
                                   backgroundColor: isOptional ? AppColors.primary : Colors.orange,
                                   duration: const Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
                               );
                             },
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
                                 color: isOptional
-                                    ? Colors.orange.withValues(alpha: 0.1)
-                                    : AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                    ? Colors.orange.withValues(alpha: 0.08)
+                                    : AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: isOptional ? Colors.orange : AppColors.primary,
-                                  style: isOptional ? BorderStyle.solid : BorderStyle.solid,
+                                  width: 1.5,
                                 ),
                               ),
                               child: Row(
@@ -413,8 +557,8 @@ class _AddDishScreenState extends State<AddDishScreen> {
                                 children: [
                                   if (isOptional)
                                     Container(
-                                      margin: const EdgeInsets.only(right: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      margin: const EdgeInsets.only(right: 5),
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                       decoration: BoxDecoration(
                                         color: Colors.orange,
                                         borderRadius: BorderRadius.circular(4),
@@ -439,7 +583,7 @@ class _AddDishScreenState extends State<AddDishScreen> {
                                   const SizedBox(width: 4),
                                   Icon(
                                     Icons.close,
-                                    size: 16,
+                                    size: 14,
                                     color: isOptional ? Colors.orange : AppColors.primary,
                                   ),
                                 ],
@@ -448,35 +592,42 @@ class _AddDishScreenState extends State<AddDishScreen> {
                           );
                         }).toList(),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
+                      Divider(color: AppColors.grey200, height: 1),
+                      const SizedBox(height: 10),
                     ],
-                    // Available ingredients (top 8 or filtered)
+                    // Available ingredients
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: _getDisplayedIngredients().map((ingredient) {
                         return GestureDetector(
                           onTap: () {
-                            setState(() {
-                              _selectedIngredients.add(ingredient);
-                            });
+                            setState(() => _selectedIngredients.add(ingredient));
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
+                              horizontal: 14,
+                              vertical: 8,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.border),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.grey300),
                             ),
-                            child: Text(
-                              ingredient,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textPrimary,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add, size: 14, color: AppColors.textSecondary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  ingredient,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -485,66 +636,42 @@ class _AddDishScreenState extends State<AddDishScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // Tags
-              _buildSectionCard(
+              _buildSection(
+                icon: Icons.label_outline,
+                iconColor: AppColors.grey600,
+                accentColor: AppColors.grey400,
+                title: 'Tags',
+                subtitle: 'Optional',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Tags (Optional)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             controller: _tagController,
-                            decoration: InputDecoration(
-                              hintText: 'e.g., Spicy, Quick',
-                              hintStyle: TextStyle(color: Colors.grey[400]),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: AppColors.border),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: AppColors.border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: AppColors.primary),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
+                            style: const TextStyle(fontSize: 14),
+                            decoration: _inputDecoration(
+                              hint: 'e.g., Spicy, Quick, Easy',
+                              prefixIcon: Icons.tag,
                             ),
                             onSubmitted: (_) => _addTag(),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: _addTag,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                        Material(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            onTap: _addTag,
+                            borderRadius: BorderRadius.circular(10),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(Icons.add, color: Colors.white, size: 20),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Add',
-                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
@@ -557,15 +684,17 @@ class _AddDishScreenState extends State<AddDishScreen> {
                         children: _tags.map((tag) {
                           return Chip(
                             label: Text(tag),
-                            deleteIcon: const Icon(Icons.close, size: 16),
+                            deleteIcon: const Icon(Icons.close, size: 14),
                             onDeleted: () => _removeTag(tag),
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
                             labelStyle: const TextStyle(
                               color: AppColors.primary,
-                              fontSize: 13,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                             deleteIconColor: AppColors.primary,
                             side: BorderSide.none,
+                            visualDensity: VisualDensity.compact,
                           );
                         }).toList(),
                       ),
@@ -573,151 +702,43 @@ class _AddDishScreenState extends State<AddDishScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // Visibility
-              _buildSectionCard(
+              _buildSection(
+                icon: Icons.visibility_outlined,
+                iconColor: AppColors.grey600,
+                accentColor: AppColors.grey400,
+                title: 'Visibility',
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Visibility',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isPrivate = true;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                color: _isPrivate
-                                    ? AppColors.primary
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _isPrivate
-                                      ? AppColors.primary
-                                      : AppColors.border,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.lock,
-                                    color: _isPrivate
-                                        ? Colors.white
-                                        : AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Private',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: _isPrivate
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: _buildVisibilityOption(
+                            icon: Icons.lock_outline,
+                            label: 'Private',
+                            description: 'Only you',
+                            isSelected: _isPrivate,
+                            onTap: () => setState(() => _isPrivate = true),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isPrivate = false;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              decoration: BoxDecoration(
-                                color: !_isPrivate
-                                    ? AppColors.primary
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: !_isPrivate
-                                      ? AppColors.primary
-                                      : AppColors.border,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.public,
-                                    color: !_isPrivate
-                                        ? Colors.white
-                                        : AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Public',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: !_isPrivate
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: _buildVisibilityOption(
+                            icon: Icons.public,
+                            label: 'Public',
+                            description: 'Everyone',
+                            isSelected: !_isPrivate,
+                            onTap: () => setState(() => _isPrivate = false),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isPrivate
-                          ? 'Only you can see this dish'
-                          : 'Everyone can see this dish',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveDish,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Save Dish',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -725,16 +746,253 @@ class _AddDishScreenState extends State<AddDishScreen> {
     );
   }
 
-  Widget _buildSectionCard({required Widget child}) {
+  Widget _buildBottomSaveBar() {
+    final isReady = _completedSteps == _totalRequiredSteps;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
-      child: child,
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: _saveDish,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isReady ? AppColors.primary : AppColors.grey400,
+            elevation: isReady ? 2 : 0,
+            shadowColor: AppColors.primary.withValues(alpha: 0.3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isReady ? Icons.check_circle_outline : Icons.restaurant_menu,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isReady ? 'Save Dish' : 'Complete required fields',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required IconData icon,
+    required Color iconColor,
+    required Color accentColor,
+    required String title,
+    required Widget child,
+    bool isRequired = false,
+    bool isCompleted = false,
+    String? subtitle,
+    Widget? trailing,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isCompleted ? accentColor.withValues(alpha: 0.3) : AppColors.grey200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 16, color: iconColor),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          if (isRequired) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '*',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isCompleted ? AppColors.primary : AppColors.error,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (subtitle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (trailing != null) trailing,
+                if (isRequired && isCompleted)
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check, size: 12, color: Colors.white),
+                  ),
+              ],
+            ),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisibilityOption({
+    required IconData icon,
+    required String label,
+    required String description,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: isSelected ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 10,
+                color: isSelected
+                    ? Colors.white.withValues(alpha: 0.8)
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+      prefixIcon: prefixIcon != null
+          ? Icon(prefixIcon, color: Colors.grey[400], size: 18)
+          : null,
+      filled: true,
+      fillColor: AppColors.grey100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  InputDecoration _searchDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+      prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 18),
+      filled: true,
+      fillColor: AppColors.grey100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      isDense: true,
     );
   }
 }

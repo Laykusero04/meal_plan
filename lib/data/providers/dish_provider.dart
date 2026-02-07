@@ -20,9 +20,11 @@ class DishProvider extends ChangeNotifier {
     _auth.authStateChanges().listen((user) {
       if (user != null) {
         fetchDishes();
+        fetchIngredients();
       } else {
         _myDishes.clear();
         _publicDishes.clear();
+        _ingredients.clear();
         notifyListeners();
       }
     });
@@ -73,6 +75,8 @@ class DishProvider extends ChangeNotifier {
     return Dish(
       id: doc.id,
       name: data['name'] ?? '',
+      description: data['description'] ?? '',
+      mainIngredient: data['mainIngredient'] ?? '',
       ingredients: data['ingredients'] ?? '',
       category: data['category'] ?? '',
       tags: List<String>.from(data['tags'] ?? []),
@@ -114,6 +118,8 @@ class DishProvider extends ChangeNotifier {
 
       await ref.set({
         'name': dish.name,
+        'description': dish.description,
+        'mainIngredient': dish.mainIngredient,
         'ingredients': dish.ingredients,
         'category': dish.category,
         'tags': dish.tags,
@@ -142,6 +148,8 @@ class DishProvider extends ChangeNotifier {
           .doc(id)
           .update({
         'name': updatedDish.name,
+        'description': updatedDish.description,
+        'mainIngredient': updatedDish.mainIngredient,
         'ingredients': updatedDish.ingredients,
         'category': updatedDish.category,
         'tags': updatedDish.tags,
@@ -192,4 +200,31 @@ class DishProvider extends ChangeNotifier {
   String generateId() {
     return 'my-${DateTime.now().millisecondsSinceEpoch}';
   }
+
+  // ---- Ingredients Management ----
+
+  final List<String> _ingredients = [];
+  List<String> get ingredients => List.unmodifiable(_ingredients);
+
+  /// Fetch ingredients from Firestore
+  Future<void> fetchIngredients() async {
+    try {
+      final snapshot = await _firestore
+          .collection('ingredients')
+          .orderBy('name')
+          .get();
+
+      _ingredients.clear();
+      for (final doc in snapshot.docs) {
+        final name = doc.data()['name'] as String?;
+        if (name != null && name.isNotEmpty) {
+          _ingredients.add(name);
+        }
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching ingredients: $e');
+    }
+  }
+
 }
