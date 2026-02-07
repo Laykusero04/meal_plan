@@ -355,17 +355,47 @@ class _DishesScreenState extends State<DishesScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    isPublic && dish.author != null
-                        ? dish.author!
-                        : dish.ingredients,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                  if (isPublic && dish.author != null)
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 10,
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                          child: Text(
+                            dish.author!.isNotEmpty
+                                ? dish.author![0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            dish.author!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      dish.ingredients,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                   const Spacer(),
                   Row(
                     children: [

@@ -2,13 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class GroceryProvider extends ChangeNotifier {
   /// Items the user has in their pantry
-  final Set<String> _pantryItems = {
-    'Salt',
-    'Pepper',
-    'Olive Oil',
-    'Sugar',
-    'Butter',
-  };
+  final Set<String> _pantryItems = {};
 
   /// Items that have been checked off the grocery list
   final Map<String, bool> _checkedItems = {};

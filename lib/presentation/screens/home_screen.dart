@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
-import 'package:meal_plan/presentation/screens/meal_decider_screen.dart';
+import 'package:meal_plan/data/providers/dish_provider.dart';
 import 'package:meal_plan/presentation/screens/dish_details_screen.dart';
+import 'package:meal_plan/presentation/screens/meal_decider_screen.dart';
+import 'package:meal_plan/presentation/screens/select_dish_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,11 +21,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _username;
   bool _isLoadingUser = true;
+  Map<String, String> _todayMeals = {};
+  StreamSubscription? _mealsSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _listenToTodayMeals();
+  }
+
+  @override
+  void dispose() {
+    _mealsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -53,6 +66,91 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoadingUser = false;
       });
     }
+  }
+
+  void _listenToTodayMeals() {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    _mealsSubscription = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('planned_meals')
+        .where('date', isEqualTo: Timestamp.fromDate(todayStart))
+        .snapshots()
+        .listen((snapshot) {
+      final Map<String, String> meals = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final mealType = data['mealType'] as String?;
+        final dishName = data['dishName'] as String?;
+        if (mealType != null && dishName != null) {
+          meals[mealType.toLowerCase()] = dishName;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _todayMeals = meals;
+      });
+    });
+  }
+
+  void _setupMeal(String mealType) async {
+    final dish = await Navigator.push<dynamic>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectDishScreen(mealType: mealType),
+      ),
+    );
+
+    if (dish == null || !mounted) return;
+
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final collection = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('planned_meals');
+
+    // Delete existing meal for same date + mealType
+    final existing = await collection
+        .where('date', isEqualTo: Timestamp.fromDate(todayStart))
+        .where('mealType', isEqualTo: mealType.toLowerCase())
+        .get();
+    for (final doc in existing.docs) {
+      await doc.reference.delete();
+    }
+
+    // Save new meal
+    await collection.add({
+      'dishName': dish.name,
+      'mealType': mealType.toLowerCase(),
+      'date': Timestamp.fromDate(todayStart),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    if (!mounted) return;
+    // No need to manually update _todayMeals - the stream listener handles it
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${dish.name} set for $mealType'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  Future<void> _onRefresh() async {
+    _mealsSubscription?.cancel();
+    _listenToTodayMeals();
+    await _loadUserData();
   }
 
   String _getGreeting() {
@@ -106,7 +204,11 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         toolbarHeight: 56,
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -136,72 +238,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            // Today's Meals Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Today's Meals",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF333333),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'View All',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF2ECC71),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-            // Meal Cards List
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  _buildMealCard(
-                    mealType: 'Breakfast',
-                    mealName: 'Scrambled Eggs & Toast',
-                    icon: Icons.breakfast_dining,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildMealCard(
-                    mealType: 'Lunch',
-                    mealName: 'Not planned',
-                    isNotPlanned: true,
-                    icon: Icons.lunch_dining,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildMealCard(
-                    mealType: 'Dinner',
-                    mealName: 'Grilled Chicken Salad',
-                    icon: Icons.dinner_dining,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
             // Quick Actions
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -230,6 +266,48 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () {},
                       isPrimary: false,
                     ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Today's Meals Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Today's Meals",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMealCard(
+                    mealType: 'Breakfast',
+                    mealName: _todayMeals['breakfast'],
+                    icon: Icons.breakfast_dining,
+                    color: const Color(0xFFFFF3E0),
+                    iconColor: const Color(0xFFFF9800),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildMealCard(
+                    mealType: 'Lunch',
+                    mealName: _todayMeals['lunch'],
+                    icon: Icons.lunch_dining,
+                    color: const Color(0xFFE8F5E9),
+                    iconColor: const Color(0xFF4CAF50),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildMealCard(
+                    mealType: 'Dinner',
+                    mealName: _todayMeals['dinner'],
+                    icon: Icons.dinner_dining,
+                    color: const Color(0xFFE3F2FD),
+                    iconColor: const Color(0xFF2196F3),
                   ),
                 ],
               ),
@@ -302,41 +380,50 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildMealCard({
     required String mealType,
-    required String mealName,
+    required String? mealName,
     required IconData icon,
-    bool isNotPlanned = false,
+    required Color color,
+    required Color iconColor,
   }) {
+    final isNotPlanned = mealName == null;
+
     return GestureDetector(
       onTap: isNotPlanned
           ? null
           : () {
+              final dishProvider = context.read<DishProvider>();
+              final matches = dishProvider.allDishes.where((d) => d.name == mealName);
+              final dish = matches.isNotEmpty ? matches.first : null;
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => DishDetailsScreen(
                     name: mealName,
-                    category: mealType,
-                    ingredients: 'Various ingredients',
-                    tags: const [],
+                    category: dish?.category ?? mealType,
+                    ingredients: dish?.ingredients ?? '',
+                    tags: dish?.tags ?? const [],
+                    optionalIngredients: dish?.optionalIngredients ?? const [],
                   ),
                 ),
               );
             },
       child: Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -346,52 +433,77 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: isNotPlanned ? Colors.grey[100] : color,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
-              color: AppColors.primary,
+              color: isNotPlanned ? Colors.grey[400] : iconColor,
               size: 20,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   mealType,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  mealName,
                   style: TextStyle(
-                    fontSize: 13,
-                    color: isNotPlanned ? Colors.grey[400] : Colors.grey[600],
-                    fontStyle: isNotPlanned ? FontStyle.italic : FontStyle.normal,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[500],
+                    letterSpacing: 0.5,
                   ),
                 ),
+                const SizedBox(height: 3),
+                isNotPlanned
+                    ? Text(
+                        'No meal planned',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[400],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    : Text(
+                        mealName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(
-              Icons.edit_outlined,
-              color: Color(0xFF2ECC71),
-              size: 20,
-            ),
-            onPressed: () {
-              // TODO: Implement edit functionality
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
+          isNotPlanned
+              ? TextButton(
+                  onPressed: () => _setupMeal(mealType),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Set up',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                )
+              : IconButton(
+                  onPressed: () => _setupMeal(mealType),
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
         ],
       ),
       ),

@@ -29,38 +29,14 @@ class _AddDishScreenState extends State<AddDishScreen> {
     'Snack',
   ];
 
-  final List<String> _allIngredients = [
-    'Beef',
-    'Pork',
-    'Chicken',
-    'Fish',
-    'Egg',
-    'Vegetables',
-    'Rice',
-    'Pasta',
-    'Bread',
-    'Cheese',
-    'Milk',
-    'Fruits',
-    'Shrimp',
-    'Tofu',
-    'Mushroom',
-    'Onion',
-    'Garlic',
-    'Tomato',
-    'Potato',
-    'Carrot',
-    'Lettuce',
-    'Spinach',
-    'Butter',
-    'Cream',
-    'Soy Sauce',
-    'Olive Oil',
-    'Flour',
-    'Sugar',
-    'Salt',
-    'Pepper',
-  ];
+  List<String> get _allIngredients {
+    final dishProvider = context.read<DishProvider>();
+    final ingredients = <String>{};
+    for (final dish in dishProvider.allDishes) {
+      ingredients.addAll(dish.ingredientsList);
+    }
+    return ingredients.toList()..sort();
+  }
 
   String _ingredientSearch = '';
 

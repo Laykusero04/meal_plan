@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/data/providers/dish_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -15,7 +17,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _username;
   String? _email;
+  String _mealGoal = '';
+  String _dietType = '';
+  List<String> _preferredIngredients = [];
+  bool _hasPreferences = false;
   bool _isLoading = true;
+
+  static const List<String> mealGoalOptions = [
+    '3 meals/day',
+    '4 meals/day',
+    '5 meals/day',
+    'Weekly plan',
+    'Budget-friendly',
+    'Quick & easy',
+  ];
+
+  static const List<String> dietOptions = [
+    'None',
+    'Vegetarian',
+    'Vegan',
+    'Keto',
+    'Paleo',
+    'Gluten-Free',
+    'Low-Carb',
+    'Mediterranean',
+  ];
 
   @override
   void initState() {
@@ -34,8 +60,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final userDoc = await _firestore.collection('users').doc(user.uid).get();
         if (!mounted) return;
         if (userDoc.exists) {
+          final data = userDoc.data();
           setState(() {
-            _username = userDoc.data()?['username'] ?? 'User';
+            _username = data?['username'] ?? 'User';
+            _mealGoal = data?['mealGoal'] ?? '';
+            _dietType = data?['dietType'] ?? '';
+            _preferredIngredients = List<String>.from(data?['preferredIngredients'] ?? []);
+            _hasPreferences = data?.containsKey('mealGoal') == true;
             _isLoading = false;
           });
         } else {
@@ -56,6 +87,253 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _savePreferences({
+    required String mealGoal,
+    required String dietType,
+    required List<String> ingredients,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      await _firestore.collection('users').doc(user.uid).set({
+        'mealGoal': mealGoal,
+        'dietType': dietType,
+        'preferredIngredients': ingredients,
+      }, SetOptions(merge: true));
+      if (!mounted) return;
+      setState(() {
+        _mealGoal = mealGoal;
+        _dietType = dietType;
+        _preferredIngredients = ingredients;
+        _hasPreferences = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving preferences: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showEditPreferencesDialog() {
+    String selectedGoal = _mealGoal;
+    String selectedDiet = _dietType.isEmpty ? 'None' : _dietType;
+
+    // Gather current ingredients from dishes
+    final dishProvider = context.read<DishProvider>();
+    final ingredientSet = <String>{};
+    for (final dish in dishProvider.myDishes) {
+      ingredientSet.addAll(dish.ingredientsList);
+    }
+    final allIngredients = ingredientSet.toList()..sort();
+    final selectedIngredients = Set<String>.from(_preferredIngredients);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Edit Preferences',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Meal Goal - selectable chips
+                    const Text(
+                      'Meal Goal',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: mealGoalOptions.map((goal) {
+                        final isSelected = selectedGoal == goal;
+                        return ChoiceChip(
+                          label: Text(
+                            goal,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: Colors.grey[100],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          onSelected: (_) {
+                            setDialogState(() {
+                              selectedGoal = goal;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    // Diet Type - selectable chips
+                    const Text(
+                      'Diet Type',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: dietOptions.map((diet) {
+                        final isSelected = selectedDiet == diet;
+                        return ChoiceChip(
+                          label: Text(
+                            diet,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: Colors.grey[100],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          onSelected: (_) {
+                            setDialogState(() {
+                              selectedDiet = diet;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    // Ingredients - multi-select chips
+                    if (allIngredients.isNotEmpty) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Preferred Ingredients',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setDialogState(() {
+                                if (selectedIngredients.length == allIngredients.length) {
+                                  selectedIngredients.clear();
+                                } else {
+                                  selectedIngredients.addAll(allIngredients);
+                                }
+                              });
+                            },
+                            child: Text(
+                              selectedIngredients.length == allIngredients.length
+                                  ? 'Deselect all'
+                                  : 'Select all',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: allIngredients.map((ingredient) {
+                          final isSelected = selectedIngredients.contains(ingredient);
+                          return FilterChip(
+                            label: Text(
+                              ingredient,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isSelected ? Colors.white : AppColors.textPrimary,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: AppColors.primary,
+                            backgroundColor: Colors.grey[100],
+                            checkmarkColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                if (selected) {
+                                  selectedIngredients.add(ingredient);
+                                } else {
+                                  selectedIngredients.remove(ingredient);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final diet = selectedDiet == 'None' ? '' : selectedDiet;
+                    await _savePreferences(
+                      mealGoal: selectedGoal,
+                      dietType: diet,
+                      ingredients: selectedIngredients.toList()..sort(),
+                    );
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _signOut() async {
@@ -200,9 +478,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                               TextButton.icon(
-                                onPressed: () {
-                                  // TODO: Implement edit preferences
-                                },
+                                onPressed: _showEditPreferencesDialog,
                                 icon: const Icon(
                                   Icons.edit,
                                   size: 16,
@@ -231,7 +507,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Meal Goal
                           _buildPreferenceRow(
                             label: 'Meal Goal',
-                            value: 'Weekly meals',
+                            value: _mealGoal.isEmpty ? 'Not set' : _mealGoal,
                           ),
                           const SizedBox(height: 16),
                           // Ingredients
@@ -239,22 +515,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Ingredients',
+                                'Preferred Ingredients',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  _buildIngredientTag('Chicken'),
-                                  _buildIngredientTag('Fish'),
-                                  _buildIngredientTag('Vegetables'),
-                                  _buildIngredientTag('Egg'),
-                                ],
+                              Builder(
+                                builder: (context) {
+                                  // If preferences were saved, show them (even if empty)
+                                  // Otherwise fall back to dish ingredients
+                                  List<String> displayIngredients;
+                                  if (_hasPreferences) {
+                                    displayIngredients = _preferredIngredients;
+                                  } else {
+                                    final dishProvider = context.watch<DishProvider>();
+                                    final ingredients = <String>{};
+                                    for (final dish in dishProvider.myDishes) {
+                                      ingredients.addAll(dish.ingredientsList);
+                                    }
+                                    displayIngredients = ingredients.toList()..sort();
+                                  }
+                                  if (displayIngredients.isEmpty) {
+                                    return Text(
+                                      _hasPreferences
+                                          ? 'No ingredients selected'
+                                          : 'No ingredients yet',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[400],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    );
+                                  }
+                                  return Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      ...displayIngredients
+                                          .take(6)
+                                          .map((i) => _buildIngredientTag(i)),
+                                      if (displayIngredients.length > 6)
+                                        Text(
+                                          '+${displayIngredients.length - 6} more',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[500],
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -262,7 +575,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Diet Type
                           _buildPreferenceRow(
                             label: 'Diet Type',
-                            value: 'None',
+                            value: _dietType.isEmpty ? 'Not set' : _dietType,
                           ),
                         ],
                       ),
@@ -274,9 +587,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconColor: const Color(0xFF2ECC71),
                       title: 'Edit Preferences',
                       subtitle: 'Change your meal preferences',
-                      onTap: () {
-                        // TODO: Navigate to edit preferences
-                      },
+                      onTap: _showEditPreferencesDialog,
                     ),
                     const SizedBox(height: 12),
                     // Manage Subscription Card

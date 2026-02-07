@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/data/providers/dish_provider.dart';
 
 class MealDeciderScreen extends StatefulWidget {
   const MealDeciderScreen({super.key});
@@ -17,14 +19,15 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
   String? _selectedMealTag;
 
   final List<String> _mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-  final List<String> _ingredients = [
-    'Beef',
-    'Pork',
-    'Chicken',
-    'Fish',
-    'Egg',
-    'Vegetables'
-  ];
+
+  List<String> _getIngredients() {
+    final dishProvider = context.read<DishProvider>();
+    final ingredients = <String>{};
+    for (final dish in dishProvider.allDishes) {
+      ingredients.addAll(dish.ingredientsList);
+    }
+    return ingredients.toList()..sort();
+  }
 
   final List<Map<String, dynamic>> _budgetOptions = [
     {
@@ -62,34 +65,42 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
   void _spinMeal() {
     if (_selectedMealType == null) return;
 
-    // Simulate meal selection logic
-    final meals = {
-      'Breakfast': [
-        {'name': 'Scrambled Eggs & Toast', 'tag': 'Egg'},
-        {'name': 'Grilled Fish', 'tag': 'Fish'},
-        {'name': 'Oatmeal with Fruits', 'tag': 'Vegetables'},
-      ],
-      'Lunch': [
-        {'name': 'Grilled Chicken Salad', 'tag': 'Chicken'},
-        {'name': 'Beef Stir Fry', 'tag': 'Beef'},
-        {'name': 'Fish Tacos', 'tag': 'Fish'},
-      ],
-      'Dinner': [
-        {'name': 'Roasted Pork', 'tag': 'Pork'},
-        {'name': 'Vegetable Pasta', 'tag': 'Vegetables'},
-        {'name': 'Grilled Fish', 'tag': 'Fish'},
-      ],
-    };
+    final dishProvider = context.read<DishProvider>();
+    final allDishes = dishProvider.allDishes;
 
-    final availableMeals = meals[_selectedMealType] ?? [];
-    if (availableMeals.isNotEmpty) {
-      final selected = availableMeals[
-          DateTime.now().millisecondsSinceEpoch % availableMeals.length];
+    // Filter dishes by selected meal type and ingredient preferences
+    var filtered = allDishes.where((dish) {
+      final matchesCategory = dish.category.toLowerCase() == _selectedMealType!.toLowerCase();
+      if (_selectedIngredients.isEmpty) return matchesCategory;
+      final dishIngredients = dish.ingredientsList.map((i) => i.toLowerCase()).toSet();
+      final hasMatchingIngredient = _selectedIngredients.any(
+        (i) => dishIngredients.contains(i.toLowerCase()),
+      );
+      return matchesCategory && hasMatchingIngredient;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      // Fallback: try without ingredient filter
+      filtered = allDishes.where((dish) {
+        return dish.category.toLowerCase() == _selectedMealType!.toLowerCase();
+      }).toList();
+    }
+
+    if (filtered.isNotEmpty) {
+      final selected = filtered[
+          DateTime.now().millisecondsSinceEpoch % filtered.length];
       setState(() {
-        _selectedMeal = selected['name'];
-        _selectedMealTag = selected['tag'];
+        _selectedMeal = selected.name;
+        _selectedMealTag = selected.category;
         _showResult = true;
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No dishes found. Add some dishes first!'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -394,7 +405,7 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: _ingredients.map((ingredient) {
+                    children: _getIngredients().map((ingredient) {
                       final isSelected =
                           _selectedIngredients.contains(ingredient);
                       return GestureDetector(

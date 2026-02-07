@@ -1,6 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
-import 'package:meal_plan/presentation/widgets/select_dish_dialog.dart';
+import 'package:meal_plan/data/providers/dish_provider.dart';
+import 'package:meal_plan/presentation/screens/select_dish_screen.dart';
 import 'package:meal_plan/presentation/screens/dish_details_screen.dart';
 
 class PlansScreen extends StatefulWidget {
@@ -11,11 +16,27 @@ class PlansScreen extends StatefulWidget {
 }
 
 class _PlansScreenState extends State<PlansScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   DateTime _selectedDay = DateTime.now();
   String _selectedView = 'Week';
   bool _isSwipingForward = true;
 
   final List<String> _viewOptions = ['Week', 'Month'];
+  StreamSubscription? _mealsSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToMeals();
+  }
+
+  @override
+  void dispose() {
+    _mealsSubscription?.cancel();
+    super.dispose();
+  }
 
   int _getDaysForView(String view) {
     switch (view) {
@@ -29,43 +50,71 @@ class _PlansScreenState extends State<PlansScreen> {
   }
 
   // Meal plan data structure
-  Map<String, Map<String, String>> _mealPlans = {
-    '2026-01-12': {
-      'breakfast': 'Scrambled Eggs & Toast',
-      'lunch': 'Grilled Chicken Salad',
-      'dinner': 'Vegetable Pasta',
-    },
-    '2026-01-13': {
-      'breakfast': 'Oatmeal with Fruits',
-      'lunch': 'Beef Stir Fry',
-      'dinner': 'Grilled Fish',
-    },
-    '2026-01-14': {
-      'breakfast': 'Pancakes with Syrup',
-      'lunch': 'Chicken Wrap',
-      'dinner': 'Roasted Pork',
-    },
-    '2026-01-15': {
-      'breakfast': 'Yogurt with Granola',
-      'lunch': 'Fish Tacos',
-      'dinner': 'Beef Steak',
-    },
-    '2026-01-16': {
-      'breakfast': 'French Toast',
-      'lunch': 'Caesar Salad',
-      'dinner': 'Grilled Salmon',
-    },
-    '2026-01-17': {
-      'breakfast': 'Smoothie Bowl',
-      'lunch': 'Chicken Sandwich',
-      'dinner': 'Vegetable Curry',
-    },
-    '2026-01-18': {
-      'breakfast': 'Avocado Toast',
-      'lunch': 'Beef Burger',
-      'dinner': 'Chicken Teriyaki',
-    },
-  };
+  final Map<String, Map<String, String>> _mealPlans = {};
+
+  void _listenToMeals() {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    _mealsSubscription = _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('planned_meals')
+        .snapshots()
+        .listen((snapshot) {
+      final Map<String, Map<String, String>> loaded = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final mealType = data['mealType'] as String?;
+        final dishName = data['dishName'] as String?;
+        final date = data['date'] as Timestamp?;
+        if (mealType != null && dishName != null && date != null) {
+          final d = date.toDate();
+          final dateKey = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+          loaded[dateKey] ??= {};
+          loaded[dateKey]![mealType.toLowerCase()] = dishName;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _mealPlans.clear();
+        _mealPlans.addAll(loaded);
+      });
+    });
+  }
+
+  Future<void> _saveMealToFirestore(DateTime date, String mealType, String dishName) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      final collection = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('planned_meals');
+
+      // Delete existing meal for same date + mealType
+      final existing = await collection
+          .where('date', isEqualTo: Timestamp.fromDate(dateOnly))
+          .where('mealType', isEqualTo: mealType.toLowerCase())
+          .get();
+      for (final doc in existing.docs) {
+        await doc.reference.delete();
+      }
+
+      // Save new meal
+      await collection.add({
+        'dishName': dishName,
+        'mealType': mealType.toLowerCase(),
+        'date': Timestamp.fromDate(dateOnly),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // silently fail
+    }
+  }
 
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -122,24 +171,22 @@ class _PlansScreenState extends State<PlansScreen> {
 
   Widget _buildMealTypeOption(String mealType, IconData icon, Color color) {
     return ListTile(
-      onTap: () {
+      onTap: () async {
         Navigator.pop(context);
-        showSelectDishDialog(
-          context: context,
-          mealType: mealType,
-          onDishSelected: (dish) {
-            setState(() {
-              final dateKey = _getDateKey(_selectedDay);
-              _mealPlans[dateKey] ??= {};
-              _mealPlans[dateKey]![mealType.toLowerCase()] = dish.name;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${dish.name} added to $mealType'),
-                backgroundColor: AppColors.primary,
-              ),
-            );
-          },
+        final dish = await Navigator.push<dynamic>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SelectDishScreen(mealType: mealType),
+          ),
+        );
+        if (dish == null || !mounted) return;
+        _saveMealToFirestore(_selectedDay, mealType, dish.name);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${dish.name} added to $mealType'),
+            backgroundColor: AppColors.primary,
+          ),
         );
       },
       leading: Container(
@@ -577,14 +624,18 @@ class _PlansScreenState extends State<PlansScreen> {
       onTap: isNotPlanned
           ? null
           : () {
+              final dishProvider = context.read<DishProvider>();
+              final matches = dishProvider.allDishes.where((d) => d.name == mealName);
+              final dish = matches.isNotEmpty ? matches.first : null;
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => DishDetailsScreen(
                     name: mealName,
-                    category: mealType,
-                    ingredients: 'Various ingredients',
-                    tags: const [],
+                    category: dish?.category ?? mealType,
+                    ingredients: dish?.ingredients ?? '',
+                    tags: dish?.tags ?? const [],
+                    optionalIngredients: dish?.optionalIngredients ?? const [],
                   ),
                 ),
               );
@@ -658,23 +709,21 @@ class _PlansScreenState extends State<PlansScreen> {
             ),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            onPressed: () {
-              showSelectDishDialog(
-                context: context,
-                mealType: mealType,
-                onDishSelected: (dish) {
-                  setState(() {
-                    final dateKey = _getDateKey(_selectedDay);
-                    _mealPlans[dateKey] ??= {};
-                    _mealPlans[dateKey]![mealType.toLowerCase()] = dish.name;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${dish.name} added to $mealType'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                },
+            onPressed: () async {
+              final dish = await Navigator.push<dynamic>(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SelectDishScreen(mealType: mealType),
+                ),
+              );
+              if (dish == null || !mounted) return;
+              _saveMealToFirestore(_selectedDay, mealType, dish.name);
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${dish.name} added to $mealType'),
+                  backgroundColor: AppColors.primary,
+                ),
               );
             },
           ),

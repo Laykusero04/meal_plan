@@ -770,23 +770,7 @@ class PantryManagementSheet extends StatefulWidget {
 class _PantryManagementSheetState extends State<PantryManagementSheet> {
   final TextEditingController _addItemController = TextEditingController();
 
-  final List<String> _commonPantryItems = [
-    'Salt',
-    'Pepper',
-    'Olive Oil',
-    'Vegetable Oil',
-    'Sugar',
-    'Flour',
-    'Butter',
-    'Garlic',
-    'Onion',
-    'Soy Sauce',
-    'Vinegar',
-    'Rice',
-    'Pasta',
-    'Eggs',
-    'Milk',
-  ];
+  final List<String> _commonPantryItems = [];
 
   @override
   void dispose() {
