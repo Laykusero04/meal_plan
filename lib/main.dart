@@ -16,8 +16,13 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => DishProvider()),
-        ChangeNotifierProvider(create: (_) => MealPlanProvider()),
+        ChangeNotifierProxyProvider<DishProvider, MealPlanProvider>(
+          create: (_) => MealPlanProvider(),
+          update: (_, dishProvider, mealPlanProvider) =>
+              mealPlanProvider!..update(dishProvider),
+        ),
         ChangeNotifierProvider(create: (_) => GroceryProvider()),
+        ChangeNotifierProvider(create: (_) => UserPreferencesProvider()),
       ],
       child: const MyApp(),
     ),

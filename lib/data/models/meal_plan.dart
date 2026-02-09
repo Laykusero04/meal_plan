@@ -33,7 +33,7 @@ class MealPlan {
   List<String> get allIngredients {
     final ingredients = <String>{};
     for (final meal in meals) {
-      ingredients.addAll(meal.dish.ingredientsList);
+      ingredients.addAll(meal.dish.ingredients);
     }
     return ingredients.toList()..sort();
   }

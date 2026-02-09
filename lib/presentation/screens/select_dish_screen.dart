@@ -444,7 +444,7 @@ class _SelectDishScreenState extends State<SelectDishScreen>
                       )
                     else
                       Text(
-                        dish.ingredients,
+                        dish.ingredients.join(', '),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],

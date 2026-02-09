@@ -126,7 +126,7 @@ class _AddDishScreenState extends State<AddDishScreen> {
         name: _dishNameController.text.trim(),
         description: _descriptionController.text.trim(),
         mainIngredient: _selectedMainIngredient!,
-        ingredients: _selectedIngredients.join(', '),
+        ingredients: _selectedIngredients.toList(),
         category: _selectedCategories.join(', '),
         tags: _tags,
         optionalIngredients: _optionalIngredients.toList(),

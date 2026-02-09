@@ -4,7 +4,7 @@ import 'package:meal_plan/presentation/screens/home_screen.dart';
 import 'package:meal_plan/presentation/screens/plans_screen.dart';
 import 'package:meal_plan/presentation/screens/dishes_screen.dart';
 import 'package:meal_plan/presentation/screens/grocery_list_screen.dart';
-import 'package:meal_plan/presentation/screens/profile_screen.dart';
+import 'package:meal_plan/presentation/screens/menu_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -21,7 +21,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const PlansScreen(),
     const DishesScreen(),
     const GroceryListScreen(),
-    const ProfileScreen(),
+    const MenuScreen(),
   ];
 
   @override
@@ -76,9 +76,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               label: 'Grocery',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
+              icon: Icon(Icons.menu_outlined),
+              activeIcon: Icon(Icons.menu),
+              label: 'Menu',
             ),
           ],
         ),

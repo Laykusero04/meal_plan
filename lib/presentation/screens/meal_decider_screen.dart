@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/data/providers/dish_provider.dart';
+import 'package:meal_plan/data/providers/user_preferences_provider.dart';
 
 class MealDeciderScreen extends StatefulWidget {
   const MealDeciderScreen({super.key});
@@ -24,7 +25,7 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
     final dishProvider = context.read<DishProvider>();
     final ingredients = <String>{};
     for (final dish in dishProvider.allDishes) {
-      ingredients.addAll(dish.ingredientsList);
+      ingredients.addAll(dish.ingredients);
     }
     return ingredients.toList()..sort();
   }
@@ -56,31 +57,60 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
     },
   ];
 
+  bool _prefsLoaded = false;
+
   @override
   void initState() {
     super.initState();
     _selectedMealType = 'Breakfast';
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_prefsLoaded) {
+      final prefs = context.read<UserPreferencesProvider>();
+      if (prefs.isLoaded && prefs.preferredIngredients.isNotEmpty) {
+        _selectedIngredients = Set<String>.from(prefs.preferredIngredients);
+      }
+      _prefsLoaded = true;
+    }
+  }
+
   void _spinMeal() {
     if (_selectedMealType == null) return;
 
     final dishProvider = context.read<DishProvider>();
+    final prefs = context.read<UserPreferencesProvider>();
     final allDishes = dishProvider.allDishes;
 
-    // Filter dishes by selected meal type and ingredient preferences
+    bool matchesDiet(dish) {
+      if (!prefs.hasDietFilter) return true;
+      return dish.tags.any(
+        (tag) => tag.toLowerCase() == prefs.dietType.toLowerCase(),
+      );
+    }
+
+    // Filter dishes by meal type, diet preference, and ingredient preferences
     var filtered = allDishes.where((dish) {
       final matchesCategory = dish.category.toLowerCase() == _selectedMealType!.toLowerCase();
-      if (_selectedIngredients.isEmpty) return matchesCategory;
-      final dishIngredients = dish.ingredientsList.map((i) => i.toLowerCase()).toSet();
-      final hasMatchingIngredient = _selectedIngredients.any(
+      if (!matchesCategory || !matchesDiet(dish)) return false;
+      if (_selectedIngredients.isEmpty) return true;
+      final dishIngredients = dish.ingredients.map((i) => i.toLowerCase()).toSet();
+      return _selectedIngredients.any(
         (i) => dishIngredients.contains(i.toLowerCase()),
       );
-      return matchesCategory && hasMatchingIngredient;
     }).toList();
 
     if (filtered.isEmpty) {
-      // Fallback: try without ingredient filter
+      // Fallback: try without ingredient filter but keep diet
+      filtered = allDishes.where((dish) {
+        return dish.category.toLowerCase() == _selectedMealType!.toLowerCase() && matchesDiet(dish);
+      }).toList();
+    }
+
+    if (filtered.isEmpty) {
+      // Final fallback: category only, ignoring all filters
       filtered = allDishes.where((dish) {
         return dish.category.toLowerCase() == _selectedMealType!.toLowerCase();
       }).toList();
@@ -213,6 +243,32 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
               ],
             ),
             const SizedBox(height: 24),
+            // Active diet filter indicator
+            if (context.read<UserPreferencesProvider>().hasDietFilter)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.filter_alt, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Diet filter: ${context.read<UserPreferencesProvider>().dietType}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Meal Type Section
             Container(
               width: double.infinity,

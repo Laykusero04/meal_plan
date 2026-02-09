@@ -1,12 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
-import 'package:meal_plan/data/providers/dish_provider.dart';
+import 'package:meal_plan/data/models/planned_meal.dart';
+import 'package:meal_plan/data/providers/meal_plan_provider.dart';
 import 'package:meal_plan/presentation/screens/select_dish_screen.dart';
-import 'package:meal_plan/presentation/screens/dish_details_screen.dart';
+import 'package:meal_plan/presentation/screens/planned_meal_view_screen.dart';
 
 class PlansScreen extends StatefulWidget {
   const PlansScreen({super.key});
@@ -16,27 +14,11 @@ class PlansScreen extends StatefulWidget {
 }
 
 class _PlansScreenState extends State<PlansScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
   DateTime _selectedDay = DateTime.now();
   String _selectedView = 'Week';
   bool _isSwipingForward = true;
 
   final List<String> _viewOptions = ['Week', 'Month'];
-  StreamSubscription? _mealsSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _listenToMeals();
-  }
-
-  @override
-  void dispose() {
-    _mealsSubscription?.cancel();
-    super.dispose();
-  }
 
   int _getDaysForView(String view) {
     switch (view) {
@@ -49,79 +31,14 @@ class _PlansScreenState extends State<PlansScreen> {
     }
   }
 
-  // Meal plan data structure
-  final Map<String, Map<String, String>> _mealPlans = {};
-
-  void _listenToMeals() {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    _mealsSubscription = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('planned_meals')
-        .snapshots()
-        .listen((snapshot) {
-      final Map<String, Map<String, String>> loaded = {};
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final mealType = data['mealType'] as String?;
-        final dishName = data['dishName'] as String?;
-        final date = data['date'] as Timestamp?;
-        if (mealType != null && dishName != null && date != null) {
-          final d = date.toDate();
-          final dateKey = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-          loaded[dateKey] ??= {};
-          loaded[dateKey]![mealType.toLowerCase()] = dishName;
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _mealPlans.clear();
-        _mealPlans.addAll(loaded);
-      });
-    });
+  Future<void> _saveMeal(DateTime date, String mealType, String dishName, {String? dishId}) async {
+    await _mealPlanProvider.saveMeal(date, mealType, dishName, dishId: dishId);
   }
 
-  Future<void> _saveMealToFirestore(DateTime date, String mealType, String dishName) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return;
+  MealPlanProvider get _mealPlanProvider => context.read<MealPlanProvider>();
 
-      final dateOnly = DateTime(date.year, date.month, date.day);
-      final collection = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('planned_meals');
-
-      // Delete existing meal for same date + mealType
-      final existing = await collection
-          .where('date', isEqualTo: Timestamp.fromDate(dateOnly))
-          .where('mealType', isEqualTo: mealType.toLowerCase())
-          .get();
-      for (final doc in existing.docs) {
-        await doc.reference.delete();
-      }
-
-      // Save new meal
-      await collection.add({
-        'dishName': dishName,
-        'mealType': mealType.toLowerCase(),
-        'date': Timestamp.fromDate(dateOnly),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      // silently fail
-    }
-  }
-
-  String _getDateKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  Map<String, String>? _getMealPlanForDate(DateTime date) {
-    return _mealPlans[_getDateKey(date)];
+  Map<String, PlannedMeal>? _getMealPlanForDate(DateTime date) {
+    return _mealPlanProvider.getPlannedMealsMapForDate(date);
   }
 
   bool _hasPlanForDate(DateTime date) {
@@ -162,6 +79,7 @@ class _PlansScreenState extends State<PlansScreen> {
             _buildMealTypeOption('Breakfast', Icons.breakfast_dining, const Color(0xFFFF9800)),
             _buildMealTypeOption('Lunch', Icons.lunch_dining, const Color(0xFF4CAF50)),
             _buildMealTypeOption('Dinner', Icons.dinner_dining, const Color(0xFF2196F3)),
+            _buildMealTypeOption('Snack', Icons.cookie_outlined, const Color(0xFF9C27B0)),
             const SizedBox(height: 8),
           ],
         ),
@@ -180,7 +98,7 @@ class _PlansScreenState extends State<PlansScreen> {
           ),
         );
         if (dish == null || !mounted) return;
-        _saveMealToFirestore(_selectedDay, mealType, dish.name);
+        _saveMeal(_selectedDay, mealType, dish.name, dishId: dish.id);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -213,6 +131,9 @@ class _PlansScreenState extends State<PlansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Subscribe to MealPlanProvider so the screen rebuilds when data changes
+    context.watch<MealPlanProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -391,7 +312,7 @@ class _PlansScreenState extends State<PlansScreen> {
                     );
                   },
                   child: SingleChildScrollView(
-                    key: ValueKey<String>(_getDateKey(_selectedDay)),
+                    key: ValueKey<String>('${_selectedDay.year}-${_selectedDay.month}-${_selectedDay.day}'),
                     child: _hasPlanForDate(_selectedDay)
                         ? _buildPlanContent()
                         : _buildEmptyState(),
@@ -542,7 +463,7 @@ class _PlansScreenState extends State<PlansScreen> {
           // Breakfast Card
           _buildMealCard(
             mealType: 'Breakfast',
-            mealName: mealPlan['breakfast'] ?? 'Not planned',
+            plannedMeal: mealPlan['breakfast'],
             icon: Icons.breakfast_dining,
             color: const Color(0xFFFFF3E0),
             iconColor: const Color(0xFFFF9800),
@@ -551,7 +472,7 @@ class _PlansScreenState extends State<PlansScreen> {
           // Lunch Card
           _buildMealCard(
             mealType: 'Lunch',
-            mealName: mealPlan['lunch'] ?? 'Not planned',
+            plannedMeal: mealPlan['lunch'],
             icon: Icons.lunch_dining,
             color: const Color(0xFFE8F5E9),
             iconColor: const Color(0xFF4CAF50),
@@ -560,10 +481,19 @@ class _PlansScreenState extends State<PlansScreen> {
           // Dinner Card
           _buildMealCard(
             mealType: 'Dinner',
-            mealName: mealPlan['dinner'] ?? 'Not planned',
+            plannedMeal: mealPlan['dinner'],
             icon: Icons.dinner_dining,
             color: const Color(0xFFE3F2FD),
             iconColor: const Color(0xFF2196F3),
+          ),
+          const SizedBox(height: 8),
+          // Snack Card
+          _buildMealCard(
+            mealType: 'Snack',
+            plannedMeal: mealPlan['snack'],
+            icon: Icons.cookie_outlined,
+            color: const Color(0xFFF3E5F5),
+            iconColor: const Color(0xFF9C27B0),
           ),
           const SizedBox(height: 16),
           // Action Buttons
@@ -613,29 +543,32 @@ class _PlansScreenState extends State<PlansScreen> {
 
   Widget _buildMealCard({
     required String mealType,
-    required String mealName,
+    required PlannedMeal? plannedMeal,
     required IconData icon,
     required Color color,
     required Color iconColor,
   }) {
-    final isNotPlanned = mealName == 'Not planned';
+    final isNotPlanned = plannedMeal == null;
+    final mealName = plannedMeal?.dish.name ?? 'Not planned';
 
     return GestureDetector(
       onTap: isNotPlanned
           ? null
           : () {
-              final dishProvider = context.read<DishProvider>();
-              final matches = dishProvider.allDishes.where((d) => d.name == mealName);
-              final dish = matches.isNotEmpty ? matches.first : null;
+              final dish = plannedMeal.dish;
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => DishDetailsScreen(
-                    name: mealName,
-                    category: dish?.category ?? mealType,
-                    ingredients: dish?.ingredients ?? '',
-                    tags: dish?.tags ?? const [],
-                    optionalIngredients: dish?.optionalIngredients ?? const [],
+                  builder: (context) => PlannedMealViewScreen(
+                    dishName: dish.name,
+                    mealType: mealType,
+                    category: dish.category,
+                    ingredients: dish.ingredients,
+                    description: dish.description,
+                    mainIngredient: dish.mainIngredient,
+                    tags: dish.tags,
+                    optionalIngredients: dish.optionalIngredients,
+                    date: _selectedDay,
                   ),
                 ),
               );
@@ -717,7 +650,7 @@ class _PlansScreenState extends State<PlansScreen> {
                 ),
               );
               if (dish == null || !mounted) return;
-              _saveMealToFirestore(_selectedDay, mealType, dish.name);
+              _saveMeal(_selectedDay, mealType, dish.name, dishId: dish.id);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

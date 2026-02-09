@@ -293,6 +293,7 @@ class _DishesScreenState extends State<DishesScreen>
           context,
           MaterialPageRoute(
             builder: (context) => DishDetailsScreen(
+              dishId: dish.id,
               name: dish.name,
               category: dish.category,
               ingredients: dish.ingredients,
@@ -388,7 +389,7 @@ class _DishesScreenState extends State<DishesScreen>
                     )
                   else
                     Text(
-                      dish.ingredients,
+                      dish.ingredients.join(', '),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/data/providers/dish_provider.dart';
 import 'package:meal_plan/data/providers/grocery_provider.dart';
 import 'package:meal_plan/data/providers/meal_plan_provider.dart';
+import 'package:meal_plan/data/providers/user_preferences_provider.dart';
 
 class GroceryListScreen extends StatelessWidget {
   const GroceryListScreen({super.key});
@@ -204,6 +206,7 @@ class GroceryListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final mealPlanProvider = context.watch<MealPlanProvider>();
     final groceryProvider = context.watch<GroceryProvider>();
+    final prefs = context.watch<UserPreferencesProvider>();
 
     final todayIngredients = mealPlanProvider.getTodaysIngredients();
     final tomorrowIngredients = mealPlanProvider.getTomorrowsIngredients();
@@ -256,6 +259,32 @@ class GroceryListScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 16),
             _buildSummaryCard(context, totalItems, groceryProvider),
+            if (prefs.mealGoal.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.flag_outlined, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Meal goal: ${prefs.mealGoal}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             _buildPantryInfoCard(context, neededPantryItems, groceryProvider),
             const SizedBox(height: 8),
@@ -770,8 +799,6 @@ class PantryManagementSheet extends StatefulWidget {
 class _PantryManagementSheetState extends State<PantryManagementSheet> {
   final TextEditingController _addItemController = TextEditingController();
 
-  final List<String> _commonPantryItems = [];
-
   @override
   void dispose() {
     _addItemController.dispose();
@@ -788,6 +815,8 @@ class _PantryManagementSheetState extends State<PantryManagementSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final commonPantryItems = context.watch<DishProvider>().ingredients;
+
     return ListenableBuilder(
       listenable: widget.groceryProvider,
       builder: (context, _) {
@@ -965,7 +994,7 @@ class _PantryManagementSheetState extends State<PantryManagementSheet> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _commonPantryItems.map((item) {
+                      children: commonPantryItems.map((item) {
                         final isInPantry = pantryItems.contains(item);
                         return GestureDetector(
                           onTap: () {

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
-import 'package:meal_plan/data/models/dish.dart';
 import 'package:meal_plan/data/models/planned_meal.dart';
 import 'package:meal_plan/data/providers/meal_plan_provider.dart';
 
 class DishDetailsScreen extends StatefulWidget {
+  final String dishId;
   final String name;
   final String category;
-  final String ingredients;
+  final List<String> ingredients;
   final List<String> tags;
   final String? author;
   final bool isPublic;
@@ -16,6 +16,7 @@ class DishDetailsScreen extends StatefulWidget {
 
   const DishDetailsScreen({
     super.key,
+    required this.dishId,
     required this.name,
     required this.category,
     required this.ingredients,
@@ -176,7 +177,7 @@ class _DishDetailsScreenState extends State<DishDetailsScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: widget.ingredients.split(', ').map((ingredient) {
+                    children: widget.ingredients.map((ingredient) {
                       final isOptional = widget.optionalIngredients.contains(ingredient);
                       return Container(
                         padding: const EdgeInsets.symmetric(
@@ -394,21 +395,9 @@ class _DishDetailsScreenState extends State<DishDetailsScreen> {
       onTap: () {
         Navigator.pop(sheetContext);
 
-        // Create a Dish object from the widget properties
-        final dish = Dish(
-          id: 'dish-${DateTime.now().millisecondsSinceEpoch}',
-          name: widget.name,
-          ingredients: widget.ingredients,
-          category: widget.category,
-          tags: widget.tags,
-          author: widget.author,
-          optionalIngredients: widget.optionalIngredients,
-          isPublic: widget.isPublic,
-        );
-
-        // Add to today's meal plan
+        // Save to today's meal plan via Firestore
         final mealPlanProvider = context.read<MealPlanProvider>();
-        mealPlanProvider.addMealToPlan(dish, mealType, DateTime.now());
+        mealPlanProvider.saveMeal(DateTime.now(), mealType.name, widget.name, dishId: widget.dishId);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

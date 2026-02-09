@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/data/providers/dish_provider.dart';
+import 'package:meal_plan/data/providers/user_preferences_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -17,10 +18,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _username;
   String? _email;
-  String _mealGoal = '';
-  String _dietType = '';
-  List<String> _preferredIngredients = [];
-  bool _hasPreferences = false;
   bool _isLoading = true;
 
   static const List<String> mealGoalOptions = [
@@ -63,10 +60,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final data = userDoc.data();
           setState(() {
             _username = data?['username'] ?? 'User';
-            _mealGoal = data?['mealGoal'] ?? '';
-            _dietType = data?['dietType'] ?? '';
-            _preferredIngredients = List<String>.from(data?['preferredIngredients'] ?? []);
-            _hasPreferences = data?.containsKey('mealGoal') == true;
             _isLoading = false;
           });
         } else {
@@ -89,49 +82,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _savePreferences({
-    required String mealGoal,
-    required String dietType,
-    required List<String> ingredients,
-  }) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    try {
-      await _firestore.collection('users').doc(user.uid).set({
-        'mealGoal': mealGoal,
-        'dietType': dietType,
-        'preferredIngredients': ingredients,
-      }, SetOptions(merge: true));
-      if (!mounted) return;
-      setState(() {
-        _mealGoal = mealGoal;
-        _dietType = dietType;
-        _preferredIngredients = ingredients;
-        _hasPreferences = true;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving preferences: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   void _showEditPreferencesDialog() {
-    String selectedGoal = _mealGoal;
-    String selectedDiet = _dietType.isEmpty ? 'None' : _dietType;
+    final prefs = context.read<UserPreferencesProvider>();
+    String selectedGoal = prefs.mealGoal;
+    String selectedDiet = prefs.dietType.isEmpty ? 'None' : prefs.dietType;
 
-    // Gather current ingredients from dishes
     final dishProvider = context.read<DishProvider>();
     final ingredientSet = <String>{};
     for (final dish in dishProvider.myDishes) {
-      ingredientSet.addAll(dish.ingredientsList);
+      ingredientSet.addAll(dish.ingredients);
     }
     final allIngredients = ingredientSet.toList()..sort();
-    final selectedIngredients = Set<String>.from(_preferredIngredients);
+    final selectedIngredients = Set<String>.from(prefs.preferredIngredients);
 
     showDialog(
       context: context,
@@ -155,7 +117,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Meal Goal - selectable chips
                     const Text(
                       'Meal Goal',
                       style: TextStyle(
@@ -192,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 20),
-                    // Diet Type - selectable chips
                     const Text(
                       'Diet Type',
                       style: TextStyle(
@@ -229,7 +189,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 20),
-                    // Ingredients - multi-select chips
                     if (allIngredients.isNotEmpty) ...[
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -312,12 +271,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     final diet = selectedDiet == 'None' ? '' : selectedDiet;
-                    await _savePreferences(
-                      mealGoal: selectedGoal,
-                      dietType: diet,
-                      ingredients: selectedIngredients.toList()..sort(),
-                    );
-                    if (context.mounted) Navigator.pop(context);
+                    try {
+                      await context.read<UserPreferencesProvider>().savePreferences(
+                        mealGoal: selectedGoal,
+                        dietType: diet,
+                        ingredients: selectedIngredients.toList()..sort(),
+                      );
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error saving preferences: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -336,23 +306,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _signOut() async {
-    try {
-      await _auth.signOut();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error signing out: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final prefs = context.watch<UserPreferencesProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -365,14 +321,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontSize: 16,
           ),
         ),
-        automaticallyImplyLeading: false,
         elevation: 0,
         toolbarHeight: 56,
       ),
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
             )
           : SingleChildScrollView(
@@ -507,7 +462,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Meal Goal
                           _buildPreferenceRow(
                             label: 'Meal Goal',
-                            value: _mealGoal.isEmpty ? 'Not set' : _mealGoal,
+                            value: prefs.mealGoal.isEmpty ? 'Not set' : prefs.mealGoal,
                           ),
                           const SizedBox(height: 16),
                           // Ingredients
@@ -524,22 +479,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 8),
                               Builder(
                                 builder: (context) {
-                                  // If preferences were saved, show them (even if empty)
-                                  // Otherwise fall back to dish ingredients
-                                  List<String> displayIngredients;
-                                  if (_hasPreferences) {
-                                    displayIngredients = _preferredIngredients;
-                                  } else {
-                                    final dishProvider = context.watch<DishProvider>();
-                                    final ingredients = <String>{};
-                                    for (final dish in dishProvider.myDishes) {
-                                      ingredients.addAll(dish.ingredientsList);
-                                    }
-                                    displayIngredients = ingredients.toList()..sort();
-                                  }
+                                  final displayIngredients = prefs.preferredIngredients;
                                   if (displayIngredients.isEmpty) {
                                     return Text(
-                                      _hasPreferences
+                                      prefs.mealGoal.isNotEmpty
                                           ? 'No ingredients selected'
                                           : 'No ingredients yet',
                                       style: TextStyle(
@@ -575,60 +518,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Diet Type
                           _buildPreferenceRow(
                             label: 'Diet Type',
-                            value: _dietType.isEmpty ? 'Not set' : _dietType,
+                            value: prefs.dietType.isEmpty ? 'Not set' : prefs.dietType,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // Edit Preferences Card
-                    _buildActionCard(
-                      icon: Icons.settings,
-                      iconColor: const Color(0xFF2ECC71),
-                      title: 'Edit Preferences',
-                      subtitle: 'Change your meal preferences',
-                      onTap: _showEditPreferencesDialog,
-                    ),
-                    const SizedBox(height: 12),
-                    // Manage Subscription Card
-                    _buildActionCard(
-                      icon: Icons.card_membership,
-                      iconColor: Colors.blue,
-                      title: 'Manage Subscription',
-                      subtitle: 'Coming soon',
-                      onTap: () {
-                        // TODO: Navigate to subscription
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    // Logout Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        onPressed: _signOut,
-                        icon: const Icon(
-                          Icons.arrow_forward,
-                          size: 18,
-                        ),
-                        label: const Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -684,79 +578,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           fontSize: 12,
           color: Color(0xFF2ECC71),
           fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right,
-              color: AppColors.textHint,
-              size: 20,
-            ),
-          ],
         ),
       ),
     );

@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(flutter pub get:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Read(//c/seve/flutter/**)",
+      "Bash(flutter build:*)",
+      "Bash(git -C \"c:\\\\seve\\\\flutter\\\\meal_plan\" status --short nul)",
+      "Bash(cmd /c \"del \\\\?\\\\c:\\\\seve\\\\flutter\\\\meal_plan\\\\nul\")",
+      "Bash(cmd /c \"dir /a nul\")",
+      "Bash(powershell -Command \"Remove-Item -LiteralPath ''\\\\?\\\\c:\\\\seve\\\\flutter\\\\meal_plan\\\\nul'' -Force -ErrorAction SilentlyContinue; Test-Path -LiteralPath ''\\\\?\\\\c:\\\\seve\\\\flutter\\\\meal_plan\\\\nul''\")",
+      "Bash(powershell:*)",
+      "Bash(python3 -c \"import os; os.remove\\(r''\\\\\\\\?\\\\C:\\\\seve\\\\flutter\\\\meal_plan\\\\nul''\\)\")",
+      "Bash(dart run -e \"import ''dart:io''; File\\(r''\\\\\\\\?\\\\C:\\\\seve\\\\flutter\\\\meal_plan\\\\nul''\\).deleteSync\\(\\);\")"
     ]
   }
 }

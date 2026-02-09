@@ -3,7 +3,7 @@ class Dish {
   final String name;
   final String description;
   final String mainIngredient;
-  final String ingredients;
+  final List<String> ingredients;
   final String category;
   final List<String> tags;
   final String? author;
@@ -17,7 +17,7 @@ class Dish {
     required this.name,
     this.description = '',
     this.mainIngredient = '',
-    required this.ingredients,
+    this.ingredients = const [],
     required this.category,
     this.tags = const [],
     this.author,
@@ -27,13 +27,9 @@ class Dish {
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  /// Get ingredients as a list
-  List<String> get ingredientsList =>
-      ingredients.split(', ').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-
   /// Get required (non-optional) ingredients only
   List<String> get requiredIngredients =>
-      ingredientsList.where((i) => !optionalIngredients.contains(i)).toList();
+      ingredients.where((i) => !optionalIngredients.contains(i)).toList();
 
   /// Create a copy with modified fields
   Dish copyWith({
@@ -41,7 +37,7 @@ class Dish {
     String? name,
     String? description,
     String? mainIngredient,
-    String? ingredients,
+    List<String>? ingredients,
     String? category,
     List<String>? tags,
     String? author,

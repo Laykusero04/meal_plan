@@ -72,12 +72,22 @@ class DishProvider extends ChangeNotifier {
 
   Dish _dishFromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    // Handle both old String format and new List format for ingredients
+    final rawIngredients = data['ingredients'];
+    final List<String> ingredients;
+    if (rawIngredients is List) {
+      ingredients = List<String>.from(rawIngredients);
+    } else if (rawIngredients is String && rawIngredients.isNotEmpty) {
+      ingredients = rawIngredients.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } else {
+      ingredients = [];
+    }
     return Dish(
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
       mainIngredient: data['mainIngredient'] ?? '',
-      ingredients: data['ingredients'] ?? '',
+      ingredients: ingredients,
       category: data['category'] ?? '',
       tags: List<String>.from(data['tags'] ?? []),
       author: data['author'],
@@ -97,7 +107,7 @@ class DishProvider extends ChangeNotifier {
       final matchesSearch = searchQuery == null ||
           searchQuery.isEmpty ||
           dish.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          dish.ingredients.toLowerCase().contains(searchQuery.toLowerCase());
+          dish.ingredients.any((i) => i.toLowerCase().contains(searchQuery.toLowerCase()));
       final matchesCategory =
           category == null || category == 'All' || dish.category == category;
       return matchesSearch && matchesCategory;
