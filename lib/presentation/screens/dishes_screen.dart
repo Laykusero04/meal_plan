@@ -56,25 +56,22 @@ class _DishesScreenState extends State<DishesScreen>
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            _buildTabs(),
-            if (_showFilters) _buildFilters(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildDishesGrid(myDishes, isPublic: false),
-                  _buildDishesGrid(publicDishes, isPublic: true),
-                ],
-              ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSearchBar(),
+          _buildTabs(),
+          if (_showFilters) _buildFilters(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildDishesGrid(myDishes, isPublic: false),
+                _buildDishesGrid(publicDishes, isPublic: true),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -85,33 +82,6 @@ class _DishesScreenState extends State<DishesScreen>
         },
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Dishes',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Browse and manage your dishes',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
       ),
     );
   }

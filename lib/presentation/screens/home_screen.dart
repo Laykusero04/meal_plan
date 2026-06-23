@@ -19,7 +19,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  String? _username;
   bool _isLoadingUser = true;
   late AnimationController _shimmerController;
 
@@ -43,26 +42,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        final userDoc = await _firestore.collection('users').doc(user.uid).get();
-        if (!mounted) return;
-        if (userDoc.exists) {
-          setState(() {
-            _username = userDoc.data()?['username'] ?? 'User';
-            _isLoadingUser = false;
-          });
-        } else {
-          setState(() {
-            _username = user.email?.split('@')[0] ?? 'User';
-            _isLoadingUser = false;
-          });
-        }
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _isLoadingUser = false;
-        });
+        await _firestore.collection('users').doc(user.uid).get();
       }
-    } catch (e) {
+    } catch (_) {
+      // User data load is non-blocking for the home screen.
+    } finally {
       if (!mounted) return;
       setState(() {
         _isLoadingUser = false;
@@ -250,17 +234,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     await _loadUserData();
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Good morning';
-    } else if (hour < 17) {
-      return 'Good afternoon';
-    } else {
-      return 'Good evening';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final todayPlannedMeals = context.watch<MealPlanProvider>().getPlannedMealsMapForDate(DateTime.now()) ?? <String, PlannedMeal>{};
@@ -268,40 +241,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (_isLoadingUser) {
       return Scaffold(
         backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF2ECC71),
-          title: const Text(
-            'Home',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          toolbarHeight: 56,
-        ),
         body: _buildSkeletonBody(),
       );
     }
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2ECC71),
-        title: const Text(
-          'Home',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        toolbarHeight: 56,
-      ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: AppColors.primary,
@@ -310,17 +255,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Greeting Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            // Today's Meals Section
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${_getGreeting()}, $_username',
-                    style: const TextStyle(
-                      fontSize: 22,
+                  const Text(
+                    "Today's Meals",
+                    style: TextStyle(
+                      fontSize: 23,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF333333),
                     ),
@@ -331,23 +275,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Today's Meals Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Today's Meals",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF333333),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -569,22 +496,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Greeting skeleton
+              // Today's meals title skeleton
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _skeletonBox(width: 220, height: 22, radius: 6),
+                    _skeletonBox(width: 160, height: 24, radius: 6),
                     const SizedBox(height: 10),
                     _skeletonBox(width: 180, height: 14, radius: 4),
                   ],
                 ),
-              ),
-              // Today's meals title skeleton
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _skeletonBox(width: 120, height: 16, radius: 4),
               ),
               const SizedBox(height: 12),
               // Meal card skeletons

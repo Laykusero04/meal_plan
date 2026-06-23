@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/data/providers/meal_plan_provider.dart';
 import 'package:meal_plan/presentation/screens/select_dish_screen.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 
 class PlannedMealViewScreen extends StatelessWidget {
   final String dishName;
@@ -66,23 +67,11 @@ class PlannedMealViewScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: AppAppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Planned Meal',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
       ),
       bottomNavigationBar: _buildBottomActions(context),
       body: SingleChildScrollView(

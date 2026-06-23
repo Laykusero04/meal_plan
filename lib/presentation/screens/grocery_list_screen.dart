@@ -6,6 +6,47 @@ import 'package:meal_plan/data/providers/grocery_provider.dart';
 import 'package:meal_plan/data/providers/meal_plan_provider.dart';
 import 'package:meal_plan/data/providers/user_preferences_provider.dart';
 
+void showPantryManagementSheet(BuildContext context) {
+  final groceryProvider = context.read<GroceryProvider>();
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) => DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (_, scrollController) => PantryManagementSheet(
+        groceryProvider: groceryProvider,
+        scrollController: scrollController,
+      ),
+    ),
+  );
+}
+
+List<Widget> buildGroceryAppBarActions(BuildContext context) {
+  final groceryProvider = context.read<GroceryProvider>();
+
+  return [
+    IconButton(
+      icon: const Icon(Icons.home_work_outlined, color: Colors.white),
+      tooltip: 'Manage Pantry',
+      onPressed: () => showPantryManagementSheet(context),
+    ),
+    IconButton(
+      icon: const Icon(Icons.refresh, color: Colors.white),
+      onPressed: () {
+        groceryProvider.resetCheckedItems();
+        groceryProvider.resetSkippedItems();
+      },
+    ),
+  ];
+}
+
 class GroceryListScreen extends StatelessWidget {
   const GroceryListScreen({super.key});
 
@@ -156,25 +197,7 @@ class GroceryListScreen extends StatelessWidget {
   }
 
   void _showPantryManagementSheet(BuildContext context) {
-    final groceryProvider = context.read<GroceryProvider>();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (_, scrollController) => PantryManagementSheet(
-          groceryProvider: groceryProvider,
-          scrollController: scrollController,
-        ),
-      ),
-    );
+    showPantryManagementSheet(context);
   }
 
   List<String> _filterPantryItems(
@@ -226,33 +249,6 @@ class GroceryListScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: const Text(
-          'Grocery List',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home_work_outlined, color: Colors.white),
-            tooltip: 'Manage Pantry',
-            onPressed: () => _showPantryManagementSheet(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: () {
-              groceryProvider.resetCheckedItems();
-              groceryProvider.resetSkippedItems();
-            },
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

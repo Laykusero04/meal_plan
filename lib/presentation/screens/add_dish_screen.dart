@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/data/models/dish.dart';
 import 'package:meal_plan/data/providers/dish_provider.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 
 class AddDishScreen extends StatefulWidget {
   const AddDishScreen({super.key});
@@ -176,21 +177,10 @@ class _AddDishScreenState extends State<AddDishScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.grey100,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: AppAppBar(
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textPrimary),
+          icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Add New Dish',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(6),

@@ -8,6 +8,7 @@ import 'package:meal_plan/data/providers/providers.dart';
 import 'package:meal_plan/firebase_options.dart';
 import 'package:meal_plan/presentation/screens/login_screen.dart';
 import 'package:meal_plan/presentation/screens/main_navigation_screen.dart';
+import 'package:meal_plan/presentation/widgets/app_logo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,9 +55,18 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
+            backgroundColor: AppColors.background,
             body: Center(
-              child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AppLogo(size: 100),
+                  SizedBox(height: 24),
+                  CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                ],
               ),
             ),
           );

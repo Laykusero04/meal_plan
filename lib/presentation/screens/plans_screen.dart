@@ -136,20 +136,6 @@ class _PlansScreenState extends State<PlansScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: const Text(
-          'Plans',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        toolbarHeight: 56,
-      ),
       body: Column(
         children: [
           // Calendar Section - Redesigned

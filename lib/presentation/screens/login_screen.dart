@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/presentation/widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -66,42 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLogo() {
-    return Column(
-      children: [
-        // Logo Icon
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.restaurant,
-            color: Colors.white,
-            size: 36,
-          ),
-        ),
-        const SizedBox(height: 12),
-        // App Name
-        const Text(
-          'MealPlan',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        // Tagline
-        const Text(
-          'Plan meals without stress',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+    return const AppLogo(
+      size: 80,
+      showTitle: true,
+      showTagline: true,
     );
   }
 

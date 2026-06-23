@@ -5,6 +5,7 @@ import 'package:meal_plan/presentation/screens/plans_screen.dart';
 import 'package:meal_plan/presentation/screens/dishes_screen.dart';
 import 'package:meal_plan/presentation/screens/grocery_list_screen.dart';
 import 'package:meal_plan/presentation/screens/menu_screen.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -27,6 +28,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppAppBar(
+        actions: _currentIndex == 3 ? buildGroceryAppBarActions(context) : null,
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,

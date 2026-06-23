@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
 import 'package:meal_plan/data/providers/dish_provider.dart';
 import 'package:meal_plan/data/providers/user_preferences_provider.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 
 class MealDeciderScreen extends StatefulWidget {
   const MealDeciderScreen({super.key});
@@ -173,8 +174,7 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
+      appBar: AppAppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -187,14 +187,6 @@ class _MealDeciderScreenState extends State<MealDeciderScreen> {
             }
           },
         ),
-        title: const Text(
-          'Meal Decider',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        elevation: 0,
       ),
       body: _showResult ? _buildResultView() : _buildInputView(),
     );

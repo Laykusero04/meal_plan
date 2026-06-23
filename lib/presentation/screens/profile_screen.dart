@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 import 'package:meal_plan/data/providers/dish_provider.dart';
 import 'package:meal_plan/data/providers/user_preferences_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -311,18 +312,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = context.watch<UserPreferencesProvider>();
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+      appBar: AppAppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        elevation: 0,
-        toolbarHeight: 56,
       ),
       body: _isLoading
           ? const Center(

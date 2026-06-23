@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 import 'package:meal_plan/data/models/planned_meal.dart';
 import 'package:meal_plan/data/providers/meal_plan_provider.dart';
 
@@ -37,27 +38,16 @@ class _DishDetailsScreenState extends State<DishDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
+      appBar: AppAppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Dish Details',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(
               _isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: _isFavorite ? Colors.red : AppColors.textPrimary,
+              color: _isFavorite ? Colors.red : Colors.white,
             ),
             onPressed: () {
               setState(() {

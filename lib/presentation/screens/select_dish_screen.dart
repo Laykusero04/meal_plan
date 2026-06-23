@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meal_plan/core/theme/app_colors.dart';
+import 'package:meal_plan/presentation/widgets/app_app_bar.dart';
 import 'package:meal_plan/data/models/dish.dart';
 import 'package:meal_plan/data/providers/dish_provider.dart';
 
@@ -137,60 +138,25 @@ class _SelectDishScreenState extends State<SelectDishScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            _buildTabs(),
-            if (_showFilters) _buildFilters(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildDishesGrid(isPublic: false),
-                  _buildDishesGrid(isPublic: true),
-                  _buildSpinTab(),
-                ],
-              ),
-            ),
-          ],
+      appBar: AppAppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
-      child: Row(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            color: AppColors.textPrimary,
-            onPressed: () => Navigator.pop(context),
-          ),
+          _buildSearchBar(),
+          _buildTabs(),
+          if (_showFilters) _buildFilters(),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: TabBarView(
+              controller: _tabController,
               children: [
-                Text(
-                  'Select Dish',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Choose a dish for ${widget.mealType}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
+                _buildDishesGrid(isPublic: false),
+                _buildDishesGrid(isPublic: true),
+                _buildSpinTab(),
               ],
             ),
           ),
